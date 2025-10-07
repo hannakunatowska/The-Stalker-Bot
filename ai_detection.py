@@ -1,5 +1,6 @@
 import argparse
 import sys
+import signal
 from functools import lru_cache
 
 import cv2
@@ -9,8 +10,28 @@ from picamera2 import MappedArray, Picamera2
 from picamera2.devices import IMX500
 from picamera2.devices.imx500 import (NetworkIntrinsics,
                                       postprocess_nanodet_detection)
+from gpiozero import PWMOutputDevice
+from time import sleep
+
 
 last_detections = []
+
+# These values will depend on your servo
+STOP_DUTY = 0.0#~7.5% = stop
+SPEED = 0.015      # how far to move from STOP_DUTY (adjust as needed)
+
+servo_pwm = PWMOutputDevice(18, frequency=50)
+servo_pwm.value = STOP_DUTY
+sleep(1)
+
+def stop_servo_on_exit(sig, frame):
+    print("Stopping servo...")
+    servo_pwm.value = STOP_DUTY
+    sys.exit(0)
+
+# Catch Ctrl+C (SIGINT) and kill (SIGTERM)
+signal.signal(signal.SIGINT, stop_servo_on_exit)
+signal.signal(signal.SIGTERM, stop_servo_on_exit)
 
 
 class Detection:
@@ -110,7 +131,36 @@ def draw_detections(request, stream="main"):
             cv2.putText(m.array, "ROI", (b_x + 5, b_y + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
             cv2.rectangle(m.array, (b_x, b_y), (b_x + b_w, b_y + b_h), (255, 0, 0, 0))
 
+def move_servo_direction(error_x, frame_width):
+    # Normalize the horizontal error to a range of -1 to 1
+    normalized = error_x / (frame_width / 2)
 
+    # Define boundaries for stop and max turn
+    dead_zone = 0.05  # ±5% from center = no movement
+    #max_speed_change = 0.025  # Change from STOP_DUTY (can be tuned)
+
+    if abs(normalized) < dead_zone:
+        servo_pwm.value = STOP_DUTY
+        print("Centered — stopping servo")
+    else:
+        # Proportional speed adjustment based on how far from center
+        #speed_adjustment = max_speed_change * abs(normalized)
+        #speed_adjustment = min(speed_adjustment, max_speed_change)  # Clamp to max
+
+        if normalized < 0:
+            # Person is left — turn left (CCW)
+            #new_duty = STOP_DUTY - speed_adjustment
+            servo_pwm.value = 0.08#max(new_duty, 0.05)
+            print(f"Turning left with duty {servo_pwm.value:.3f}")
+        else:
+            # Person is right — turn right (CW)
+            #new_duty = STOP_DUTY + speed_adjustment
+            servo_pwm.value = 0.07# min(new_duty, 0.10)
+            print(f"Turning right with duty {servo_pwm.value:.3f}")
+
+
+        
+        
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", type=str, help="Path of the model",
@@ -176,5 +226,37 @@ if __name__ == "__main__":
 
     last_results = None
     picam2.pre_callback = draw_detections
-    while True:
-        last_results = parse_detections(picam2.capture_metadata())
+    try: 
+        while True:
+            last_results = parse_detections(picam2.capture_metadata())
+            
+            frame_width, frame_height = picam2.stream_configuration("main")["size"]
+
+            for detection in last_results:
+                label_index = int(detection.category)
+                label = get_labels()[label_index]
+                
+                if label.lower() == "person":
+                    x, y, w, h = detection.box
+                    center_x = x + w / 2
+                    center_y = y + h / 2
+
+                    error_x = center_x - (frame_width / 2)
+
+                    # Normalize error (optional)
+                    normalized_error = error_x / (frame_width / 2)
+
+                    # Scale and clamp servo movement
+                 
+
+                    print(f"Person detected: center_x={center_x}, error_x={error_x}")
+                    move_servo_direction(error_x, frame_width)
+         
+                    break  # Track only first person found
+
+    except KeyboardInterrupt:
+        print("Stopped by user")
+
+    finally:
+        print("Cleanup: stopping servo")
+        servo_pwm.value= STOP_DUTY
