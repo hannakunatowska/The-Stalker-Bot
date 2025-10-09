@@ -1,6 +1,6 @@
+
 import argparse
 import sys
-import signal
 from functools import lru_cache
 
 import cv2
@@ -10,29 +10,16 @@ from picamera2 import MappedArray, Picamera2
 from picamera2.devices import IMX500
 from picamera2.devices.imx500 import (NetworkIntrinsics,
                                       postprocess_nanodet_detection)
-from gpiozero import PWMOutputDevice
+                                      
+from gpiozero import Servo
 from time import sleep
-
 
 last_detections = []
 
-# These values will depend on your servo
-STOP_DUTY = 0.0#~7.5% = stop
-SPEED = 0.015      # how far to move from STOP_DUTY (adjust as needed)
-
-servo_pwm = PWMOutputDevice(18, frequency=50)
-servo_pwm.value = STOP_DUTY
-sleep(1)
-
-def stop_servo_on_exit(sig, frame):
-    print("Stopping servo...")
-    servo_pwm.value = STOP_DUTY
-    sys.exit(0)
-
-# Catch Ctrl+C (SIGINT) and kill (SIGTERM)
-signal.signal(signal.SIGINT, stop_servo_on_exit)
-signal.signal(signal.SIGTERM, stop_servo_on_exit)
-
+# Setup the servo (change GPIO pin if needed)
+servo = Servo(18, min_pulse_width=0.5/1000, max_pulse_width=2.5/1000)
+servo_pos = 0.0  # Start at center
+servo.value = servo_pos
 
 class Detection:
     def __init__(self, coords, category, conf, metadata):
@@ -98,7 +85,6 @@ def draw_detections(request, stream="main"):
         for detection in detections:
             x, y, w, h = detection.box
             label = f"{labels[int(detection.category)]} ({detection.conf:.2f})"
-            
 
             # Calculate text size and position
             (text_width, text_height), baseline = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
@@ -131,36 +117,7 @@ def draw_detections(request, stream="main"):
             cv2.putText(m.array, "ROI", (b_x + 5, b_y + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
             cv2.rectangle(m.array, (b_x, b_y), (b_x + b_w, b_y + b_h), (255, 0, 0, 0))
 
-def move_servo_direction(error_x, frame_width):
-    # Normalize the horizontal error to a range of -1 to 1
-    normalized = error_x / (frame_width / 2)
 
-    # Define boundaries for stop and max turn
-    dead_zone = 0.05  # ±5% from center = no movement
-    #max_speed_change = 0.025  # Change from STOP_DUTY (can be tuned)
-
-    if abs(normalized) < dead_zone:
-        servo_pwm.value = STOP_DUTY
-        print("Centered — stopping servo")
-    else:
-        # Proportional speed adjustment based on how far from center
-        #speed_adjustment = max_speed_change * abs(normalized)
-        #speed_adjustment = min(speed_adjustment, max_speed_change)  # Clamp to max
-
-        if normalized < 0:
-            # Person is left — turn left (CCW)
-            #new_duty = STOP_DUTY - speed_adjustment
-            servo_pwm.value = 0.08#max(new_duty, 0.05)
-            print(f"Turning left with duty {servo_pwm.value:.3f}")
-        else:
-            # Person is right — turn right (CW)
-            #new_duty = STOP_DUTY + speed_adjustment
-            servo_pwm.value = 0.07# min(new_duty, 0.10)
-            print(f"Turning right with duty {servo_pwm.value:.3f}")
-
-
-        
-        
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", type=str, help="Path of the model",
@@ -182,6 +139,49 @@ def get_args():
     parser.add_argument("--print-intrinsics", action="store_true",
                         help="Print JSON network_intrinsics then exit")
     return parser.parse_args()
+    
+def update_servo_tracking(x_center_normalized):
+    global servo_pos
+    threshold = 0.07  # Wider dead zone (adjust as you like)
+    step = 0.05
+    change_threshold = 0.01
+    max_pos = 1.0
+    min_pos = -1.0
+    direction = None
+    
+    new_pos = servo_pos
+
+    if x_center_normalized > 0.5 + threshold:
+        if servo_pos > min_pos:
+            new_pos = servo_pos - step
+            direction = "left"
+        else:
+            direction = "limit reached (left)"
+    elif x_center_normalized < 0.5 - threshold:
+        if servo_pos < max_pos:
+            new_pos = servo_pos + step
+            direction = "right"
+        else:
+            direction = "limit reached (right)"
+    else:
+        # Person is centered! Snap servo to center (0)
+        new_pos = 0
+        direction = "centered"
+
+    # Clamp new_pos to limits
+    new_pos = max(min_pos, min(max_pos, new_pos))
+
+    if abs(new_pos - servo_pos) >= change_threshold:
+        servo_pos = new_pos
+        servo.value = servo_pos
+
+    angle = (servo_pos + 1) * 90
+
+    print(f"Person x: {x_center_normalized:.2f} | Servo pos: {servo_pos:.2f} | Angle: {angle:.1f}° | Direction: {direction}")
+    return angle
+
+
+
 
 
 if __name__ == "__main__":
@@ -226,37 +226,18 @@ if __name__ == "__main__":
 
     last_results = None
     picam2.pre_callback = draw_detections
-    try: 
-        while True:
-            last_results = parse_detections(picam2.capture_metadata())
-            
-            frame_width, frame_height = picam2.stream_configuration("main")["size"]
+    while True:
+        last_results = parse_detections(picam2.capture_metadata())
 
-            for detection in last_results:
-                label_index = int(detection.category)
-                label = get_labels()[label_index]
-                
-                if label.lower() == "person":
-                    x, y, w, h = detection.box
-                    center_x = x + w / 2
-                    center_y = y + h / 2
+        person_detections = [d for d in last_results if intrinsics.labels[int(d.category)] == "person"]
 
-                    error_x = center_x - (frame_width / 2)
+        if person_detections:
+            person = person_detections[0]
+            x, y, w, h = person.box
+            x_center = x + w / 2
+            frame_width = picam2.stream_configuration("main")["size"][0]
+            x_center_normalized = x_center / frame_width
+            update_servo_tracking(x_center_normalized)
+        else:
+            print("No person detected.")
 
-                    # Normalize error (optional)
-                    normalized_error = error_x / (frame_width / 2)
-
-                    # Scale and clamp servo movement
-                 
-
-                    print(f"Person detected: center_x={center_x}, error_x={error_x}")
-                    move_servo_direction(error_x, frame_width)
-         
-                    break  # Track only first person found
-
-    except KeyboardInterrupt:
-        print("Stopped by user")
-
-    finally:
-        print("Cleanup: stopping servo")
-        servo_pwm.value= STOP_DUTY
