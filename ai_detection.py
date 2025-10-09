@@ -240,4 +240,26 @@ if __name__ == "__main__":
             update_servo_tracking(x_center_normalized)
         else:
             print("No person detected.")
+            
+                # ----- Obstacle Detection with Object Detection -----
+        obstacle_labels = {
+            "chair", "couch", "bed", "bench", "table", "tv", "potted plant", 
+            "car", "truck", "bottle", "vase", "wall", "refrigerator", "microwave"
+        }
+
+        obstacles = [
+            d for d in last_results
+            if intrinsics.labels[int(d.category)] in obstacle_labels
+        ]
+
+        for obs in obstacles:
+            x, y, w, h = obs.box
+            area = w * h
+
+            if area > 10000:  # You can tweak this value
+                label = intrinsics.labels[int(obs.category)]
+                print(f"⚠️ Obstacle detected: {label} | Area: {area}")
+                # TODO: Add obstacle avoidance logic here (e.g. stop_motors(), turn, etc.)
+                break
+
 
