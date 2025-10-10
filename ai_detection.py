@@ -264,7 +264,7 @@ def update_servo_tracking(x_center_normalized):
         if servo_position < max_pos:
             new_pos = servo_position + step
             direction = "right"
-            
+
         else:
             direction = "limit reached (right)"
 
@@ -276,40 +276,41 @@ def update_servo_tracking(x_center_normalized):
     # Clamp new_pos to limits
     new_pos = max(min_pos, min(max_pos, new_pos))
 
-    if abs(new_pos - servo_position) >= change_threshold:
-        servo_position = new_pos
-        servo.value = servo_position
+    if abs(new_pos - servo_position) >= change_threshold: # If the change is significant enough
+        servo_position = new_pos # Update the servo position
+        servo.value = servo_position # Update the servo output
 
-    angle = (servo_position + 1) * 90
+    angle = (servo_position + 1) * 90 # Map servo position to angle
 
-    print(f"Person x: {x_center_normalized:.2f} | Servo pos: {servo_position:.2f} | Angle: {angle:.1f}° | Direction: {direction}")
+    print(f"Person x: {x_center_normalized:.2f} | Servo pos: {servo_position:.2f} | Angle: {angle:.1f}° | Direction: {direction}") # Print tracking info
+
     return angle
 
 if __name__ == "__main__":
 
-    args = get_args()
+    args = get_args() # Get the command-line arguments
 
-    # This must be called before instantiation of Picamera2
-    imx500 = IMX500(args.model)
-    intrinsics = imx500.network_intrinsics
+    imx500 = IMX500(args.model) # Initialize IMX500 with model argument
+    intrinsics = imx500.network_intrinsics # Get network intrinsics
 
-    if not intrinsics:
-        intrinsics = NetworkIntrinsics()
-        intrinsics.task = "object detection"
+    if not intrinsics: # If no intrinsics are found:
+        intrinsics = NetworkIntrinsics() # Create a new instance of NetworkIntrinsics
+        intrinsics.task = "object detection" # Set the task to object detection
 
-    elif intrinsics.task != "object detection":
-        print("Network is not an object detection task", file=sys.stderr)
+    elif intrinsics.task != "object detection": # If the task is not object detection:
+        print("Network is not an object detection task", file = sys.stderr) # Print error message
         exit()
 
     # Override intrinsics from args
-    for key, value in vars(args).items():
+    for key, value in vars(args).items(): # Iterate over command-line arguments
 
-        if key == 'labels' and value is not None:
-            with open(value, 'r') as f:
-                intrinsics.labels = f.read().splitlines()
+        if key == 'labels' and value is not None: # If labels file is specified:
 
-        elif hasattr(intrinsics, key) and value is not None:
-            setattr(intrinsics, key, value)
+            with open(value, 'r') as f: # Open the labels file
+                intrinsics.labels = f.read().splitlines() # Read labels from file
+
+        elif hasattr(intrinsics, key) and value is not None: # If the intrinsics has the attribute and value is not None:
+            setattr(intrinsics, key, value) # Override the intrinsics attribute
 
     # Defaults
     if intrinsics.labels is None:
@@ -323,13 +324,13 @@ if __name__ == "__main__":
         exit()
 
     picam2 = Picamera2(imx500.camera_num)
-    config = picam2.create_preview_configuration(controls={"FrameRate": intrinsics.inference_rate}, buffer_count=12)
+    config = picam2.create_preview_configuration(controls={"FrameRate": intrinsics.inference_rate}, buffer_count = 12)
 
     imx500.show_network_fw_progress_bar()
-    picam2.start(config, show_preview=True)
+    picam2.start(config, show_preview = True)
 
-    if intrinsics.preserve_aspect_ratio:
-        imx500.set_auto_aspect_ratio()
+    if intrinsics.preserve_aspect_ratio: # If preserve_aspect_ratio is enabled
+        imx500.set_auto_aspect_ratio() # Set auto aspect ratio
 
     last_results = None
     picam2.pre_callback = draw_detections
@@ -349,27 +350,25 @@ if __name__ == "__main__":
 
         else:
             print("No person detected.")
-            
-                # ----- Obstacle Detection with Object Detection -----
-        
+                
         obstacle_labels = {
             "chair", "couch", "bed", "bench", "table", "tv", "potted plant", 
             "car", "truck", "bottle", "vase", "wall", "refrigerator", "microwave"
         }
 
         obstacles = [
-            d for d in last_results
-            if intrinsics.labels[int(d.category)] in obstacle_labels
+            d for d in last_results # Iterate over detected objects
+            if intrinsics.labels[int(d.category)] in obstacle_labels # Check if the detected object is an obstacle
         ]
 
-        for obs in obstacles:
-            x, y, w, h = obs.box
-            area = w * h
+        for obs in obstacles: # Iterate over detected obstacles
 
-            if area > 10000:  # You can tweak this value
-                label = intrinsics.labels[int(obs.category)]
-                print(f"⚠️ Obstacle detected: {label} | Area: {area}")
-                # TODO: Add obstacle avoidance logic here (e.g. stop_motors(), turn, etc.)
+            x, y, w, h = obs.box # Get the bounding box coordinates
+            area = w * h # Calculate the area of the bounding box
+
+            if area > 10000: # If the area is greater than 10 000
+                label = intrinsics.labels[int(obs.category)] # Get the label of the detected obstacle
+                print(f"Obstacle detected: {label} | Area: {area}") # Print obstacle info
                 break
 
 
