@@ -19,12 +19,18 @@ import time # Imports the time module for time-related functions
 
 last_detections = []
 
-# Setup the servo (change GPIO pin if needed)
-servo = Servo(18, min_pulse_width = 0.5 / 1000, max_pulse_width = 2.5 / 1000)
-servo_pos = 0.0  # Start at center
-servo.value = servo_pos # Initialize servo position
+# --- Setup ---
+
+servo = Servo(18, min_pulse_width = 0.5 / 1000, max_pulse_width = 2.5 / 1000) # Creates a Servo object on GPIO pin 18 with specified pulse widths
+servo_position = 0.0  # Creates a variable for the servo position and initializes its value to 0.0 (center position)
+servo.value = servo_position # Sets the position to "servo_position"
 
 class Detection:
+
+    """
+    Represents a single object detection.
+
+    """
 
     def __init__(self, coords, category, conf, metadata):
 
@@ -42,8 +48,8 @@ class Detection:
 
         """
 
-        self.category = category 
-        self.conf = conf
+        self.category = category # Integer category index
+        self.conf = conf # Float confidence score
         self.box = imx500.convert_inference_coords(coords, metadata, picam2)
 
 def parse_detections(metadata: dict):
@@ -61,55 +67,67 @@ def parse_detections(metadata: dict):
 
     global last_detections
 
-    bbox_normalization = intrinsics.bbox_normalization
-    bbox_order = intrinsics.bbox_order
+    bbox_normalization = intrinsics.bbox_normalization # Boolean indicating if bounding boxes are normalized
+    bbox_order = intrinsics.bbox_order # String indicating the order of bounding box coordinates ("yx" or "xy")
 
-    threshold = args.threshold
-    iou = args.iou
-    max_detections = args.max_detections
+    threshold = args.threshold # Float confidence threshold for filtering detections
+    iou = args.iou # Float IoU threshold for non-maximum suppression
+    max_detections = args.max_detections # Integer maximum number of detections to return
 
-    np_outputs = imx500.get_outputs(metadata, add_batch=True)
-    input_w, input_h = imx500.get_input_size()
+    np_outputs = imx500.get_outputs(metadata, add_batch = True) # Gets the output tensors from the metadata as a list of NumPy arrays
+    input_w, input_h = imx500.get_input_size() # Gets the input size of the model
 
-    if np_outputs is None:
-        return last_detections
+    if np_outputs is None: # If no outputs are available:
+        return last_detections # Return the last detections
     
-    if intrinsics.postprocess == "nanodet":
+    if intrinsics.postprocess == "nanodet": # If the postprocessing method is "nanodet":
 
         boxes, scores, classes = \
-            postprocess_nanodet_detection(outputs = np_outputs[0], conf = threshold, iou_thres = iou, max_out_dets = max_detections)[0]
+            postprocess_nanodet_detection(outputs = np_outputs[0], conf = threshold, iou_thres = iou, max_out_dets = max_detections)[0] # Postprocess the outputs using the nanodet method
         
-        boxes = scale_boxes(boxes, 1, 1, input_h, input_w, False, False)
+        boxes = scale_boxes(boxes, 1, 1, input_h, input_w, False, False) # Scale the bounding boxes to the input size
 
-    else:
+    else: # For other models (e.g., SSD MobileNet):
 
-        boxes, scores, classes = np_outputs[0][0], np_outputs[1][0], np_outputs[2][0]
+        boxes, scores, classes = np_outputs[0][0], np_outputs[1][0], np_outputs[2][0] # Extract boxes, scores, and classes from the outputs
 
-        if bbox_normalization:
-            boxes = boxes / input_h
+        if bbox_normalization: # If bounding boxes are normalized:
+            boxes = boxes / input_h # Normalize boxes by input height
 
-        if bbox_order == "xy":
-            boxes = boxes[:, [1, 0, 3, 2]]
+        if bbox_order == "xy": # If bounding box order is "xy":
+            boxes = boxes[:, [1, 0, 3, 2]] # Reorder boxes to "yx" format
 
-        boxes = np.array_split(boxes, 4, axis=1)
-        boxes = zip(*boxes)
+        boxes = np.array_split(boxes, 4, axis = 1) # Split boxes into separate arrays for y0, x0, y1, x1
+        boxes = zip(*boxes) # Unzip the boxes into individual components
 
     last_detections = [
-        Detection(box, category, score, metadata)
-        for box, score, category in zip(boxes, scores, classes)
-        if score > threshold
+        Detection(box, category, score, metadata) # Create a Detection object for each valid detection
+        for box, score, category in zip(boxes, scores, classes) # Iterate over boxes, scores, and categories
+        if score > threshold # Filter detections by confidence threshold
     ]
 
     return last_detections
 
 
-@lru_cache
+@lru_cache # Cache the results of this function to avoid redundant computations
 
 def get_labels():
-    labels = intrinsics.labels
 
-    if intrinsics.ignore_dash_labels:
-        labels = [label for label in labels if label and label != "-"]
+    """
+    Gets the labels for the model from intrinsics, filtering out "-" if required.
+
+    Arguments:
+        None
+
+    Returns:
+        "labels": A list of labels for the model
+
+    """
+
+    labels = intrinsics.labels # Get the labels from intrinsics
+
+    if intrinsics.ignore_dash_labels: # If the ignore_dash_labels flag is set:
+        labels = [label for label in labels if label and label != "-"] # Filter out empty and "-" labels
 
     return labels
 
@@ -128,49 +146,43 @@ def draw_detections(request, stream = "main"):
 
     """
 
-    detections = last_results
+    detections = last_results # Get the last detection results
 
     if detections is None:
         return
     
-    labels = get_labels()
+    labels = get_labels() # Get the labels for the model
 
-    with MappedArray(request, stream) as m:
+    with MappedArray(request, stream) as m: # Map the array for the specified stream
 
-        for detection in detections:
-            x, y, w, h = detection.box
-            label = f"{labels[int(detection.category)]} ({detection.conf:.2f})"
+        for detection in detections: # Iterate over each detection
 
-            # Calculate text size and position
-            (text_width, text_height), baseline = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
-            text_x = x + 5
-            text_y = y + 15
+            x, y, w, h = detection.box # Get the bounding box coordinates
+            label = f"{labels[int(detection.category)]} ({detection.conf:.2f})" # Create the label text with category and confidence
 
-            # Create a copy of the array to draw the background with opacity
-            overlay = m.array.copy()
+            (text_width, text_height), baseline = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1) # Get the size of the text
+            text_x = x + 5 # Offset text position slightly from the bounding box
+            text_y = y + 15 # Offset text position slightly from the bounding box
 
-            # Draw the background rectangle on the overlay
-            cv2.rectangle(overlay,
-                          (text_x, text_y - text_height),
-                          (text_x + text_width, text_y + baseline),
-                          (255, 255, 255),  # Background color (white)
-                          cv2.FILLED)
+            overlay = m.array.copy() # Create a copy of the image array for overlay
 
-            alpha = 0.30
-            cv2.addWeighted(overlay, alpha, m.array, 1 - alpha, 0, m.array)
+            cv2.rectangle(overlay, (text_x, text_y - text_height), (text_x + text_width, text_y + baseline), (255, 255, 255), cv2.FILLED) # Draw a filled rectangle for the text background
 
-            # Draw text on top of the background
-            cv2.putText(m.array, label, (text_x, text_y),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+            alpha = 0.30 # Transparency factor
 
-            # Draw detection box
-            cv2.rectangle(m.array, (x, y), (x + w, y + h), (0, 255, 0, 0), thickness=2)
+            cv2.addWeighted(overlay, alpha, m.array, 1 - alpha, 0, m.array) # Blend the overlay with the original image
 
-        if intrinsics.preserve_aspect_ratio:
-            b_x, b_y, b_w, b_h = imx500.get_roi_scaled(request)
-            color = (255, 0, 0)  # red
-            cv2.putText(m.array, "ROI", (b_x + 5, b_y + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
-            cv2.rectangle(m.array, (b_x, b_y), (b_x + b_w, b_y + b_h), (255, 0, 0, 0))
+            cv2.putText(m.array, label, (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1) # Draw the label text on the image
+
+            cv2.rectangle(m.array, (x, y), (x + w, y + h), (0, 255, 0, 0), thickness = 2) # Draw the bounding box around the detected object
+
+        if intrinsics.preserve_aspect_ratio: # If aspect ratio preservation is enabled:
+
+            b_x, b_y, b_w, b_h = imx500.get_roi_scaled(request) # Get the scaled region of interest (ROI)
+            color = (255, 0, 0) # Set the color for the ROI rectangle
+
+            cv2.putText(m.array, "ROI", (b_x + 5, b_y + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1) # Label the ROI
+            cv2.rectangle(m.array, (b_x, b_y), (b_x + b_w, b_y + b_h), (255, 0, 0, 0)) # Draw the ROI rectangle
 
 
 def get_args():
@@ -186,57 +198,73 @@ def get_args():
 
     """
 
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser() # Creates an ArgumentParser object for parsing command-line arguments
 
-    parser.add_argument("--model", type = str, help = "Path of the model", default = "/usr/share/imx500-models/imx500_network_ssd_mobilenetv2_fpnlite_320x320_pp.rpk")
+    parser.add_argument("--model", type = str, help = "Path of the model", default = "/usr/share/imx500-models/imx500_network_ssd_mobilenetv2_fpnlite_320x320_pp.rpk") # Adds a command-line argument for the model path with a default value
 
-    parser.add_argument("--fps", type = int, help = "Frames per second")
+    parser.add_argument("--fps", type = int, help = "Frames per second") # Adds a command-line argument for frames per second
 
-    parser.add_argument("--bbox-normalization", action = argparse.BooleanOptionalAction, help = "Normalize bbox")
+    parser.add_argument("--bbox-normalization", action = argparse.BooleanOptionalAction, help = "Normalize bbox") # Adds a command-line argument for bbox normalization
 
-    parser.add_argument("--bbox-order", choices = ["yx", "xy"], default = "yx", help = "Set bbox order yx -> (y0, x0, y1, x1) xy -> (x0, y0, x1, y1)")
+    parser.add_argument("--bbox-order", choices = ["yx", "xy"], default = "yx", help = "Set bbox order yx -> (y0, x0, y1, x1) xy -> (x0, y0, x1, y1)") # Adds a command-line argument for bbox order
 
-    parser.add_argument("--threshold", type = float, default = 0.55, help = "Detection threshold")
+    parser.add_argument("--threshold", type = float, default = 0.55, help = "Detection threshold") # Adds a command-line argument for detection threshold
 
-    parser.add_argument("--iou", type = float, default = 0.65, help = "Set iou threshold")
+    parser.add_argument("--iou", type = float, default = 0.65, help = "Set iou threshold") # Adds a command-line argument for iou threshold
 
-    parser.add_argument("--max-detections", type = int, default = 10, help = "Set max detections")
+    parser.add_argument("--max-detections", type = int, default = 10, help = "Set max detections") # Adds a command-line argument for max detections
 
-    parser.add_argument("--ignore-dash-labels", action = argparse.BooleanOptionalAction, help = "Remove '-' labels ")
+    parser.add_argument("--ignore-dash-labels", action = argparse.BooleanOptionalAction, help = "Remove '-' labels ") # Adds a command-line argument for ignoring dash labels
 
-    parser.add_argument("--postprocess", choices = ["", "nanodet"], default = None, help = "Run post process of type")
+    parser.add_argument("--postprocess", choices = ["", "nanodet"], default = None, help = "Run post process of type") # Adds a command-line argument for post-processing type
 
-    parser.add_argument("-r", "--preserve-aspect-ratio", action = argparse.BooleanOptionalAction, help = "preserve the pixel aspect ratio of the input tensor")
+    parser.add_argument("-r", "--preserve-aspect-ratio", action = argparse.BooleanOptionalAction, help = "preserve the pixel aspect ratio of the input tensor") # Adds a command-line argument for preserving aspect ratio
 
-    parser.add_argument("--labels", type = str, help = "Path to the labels file")
+    parser.add_argument("--labels", type = str, help = "Path to the labels file") # Adds a command-line argument for labels file path
 
-    parser.add_argument("--print-intrinsics", action = "store_true", help = "Print JSON network_intrinsics then exit")
+    parser.add_argument("--print-intrinsics", action = "store_true", help = "Print JSON network_intrinsics then exit") # Adds a command-line argument for printing intrinsics
 
     return parser.parse_args()
     
 def update_servo_tracking(x_center_normalized):
 
-    global servo_pos
-    threshold = 0.07  # Wider dead zone (adjust as you like)
+    """
+    Updates the servo tracking position based on the normalized x center position.
+
+    Arguments:
+        x_center_normalized (float): The normalized x center position of the detected object.
+
+    Returns:
+        "angle": The calculated servo angle position.
+
+    """
+
+    global servo_position
+
+    threshold = 0.07
     step = 0.05
     change_threshold = 0.01
     max_pos = 1.0
     min_pos = -1.0
     direction = None
     
-    new_pos = servo_pos
+    new_pos = servo_position
 
     if x_center_normalized > 0.5 + threshold:
-        if servo_pos > min_pos:
-            new_pos = servo_pos - step
+
+        if servo_position > min_pos:
+            new_pos = servo_position - step
             direction = "left"
+
         else:
             direction = "limit reached (left)"
 
     elif x_center_normalized < 0.5 - threshold:
-        if servo_pos < max_pos:
-            new_pos = servo_pos + step
+
+        if servo_position < max_pos:
+            new_pos = servo_position + step
             direction = "right"
+            
         else:
             direction = "limit reached (right)"
 
@@ -248,13 +276,13 @@ def update_servo_tracking(x_center_normalized):
     # Clamp new_pos to limits
     new_pos = max(min_pos, min(max_pos, new_pos))
 
-    if abs(new_pos - servo_pos) >= change_threshold:
-        servo_pos = new_pos
-        servo.value = servo_pos
+    if abs(new_pos - servo_position) >= change_threshold:
+        servo_position = new_pos
+        servo.value = servo_position
 
-    angle = (servo_pos + 1) * 90
+    angle = (servo_position + 1) * 90
 
-    print(f"Person x: {x_center_normalized:.2f} | Servo pos: {servo_pos:.2f} | Angle: {angle:.1f}° | Direction: {direction}")
+    print(f"Person x: {x_center_normalized:.2f} | Servo pos: {servo_position:.2f} | Angle: {angle:.1f}° | Direction: {direction}")
     return angle
 
 if __name__ == "__main__":
