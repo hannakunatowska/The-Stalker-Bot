@@ -7,6 +7,8 @@ class FollowerBot:
     def __init__(self):
         # constants
         self.turn_time_per_degree = 0.9 / 90  # 0.01 s per degree
+        self.target_min_height = 0.45  # too far
+        self.target_max_height = 0.60  # too close
         print("FollowerBot initialized.")
 
     def move_forward(self, duration=0.3):
@@ -29,31 +31,46 @@ class FollowerBot:
     def avoid_obstacle(self):
         print("Obstacle detected! Stopping.")
         self.stop()
-        # You could also add a backup / side-step here
 
     def follow(self):
         print("Starting person-follow mode...")
         while True:
-            angle, direction, obstacle = camera_servo.get_tracking_data()
+            angle, direction, obstacle, person_height = camera_servo.get_tracking_data()
 
             if obstacle:
                 self.avoid_obstacle()
                 continue
 
-            if direction == "centered":
-                if angle and abs(angle - 90) < 10:
-                    self.move_forward()
-                else:
-                    # small steering correction
-                    turn_dir = "left" if angle < 90 else "right"
-                    self.turn(turn_dir, angle)
-            elif direction in ["left", "right"]:
-                self.turn(direction, angle)
-            else:
+            if person_height is None:
                 print("No person detected, waiting...")
                 self.stop()
+                time.sleep(0.3)
+                continue
+
+            # --- Distance logic using person height ---
+            print(f"Person height (normalized): {person_height:.2f}")
+
+            if person_height < self.target_min_height:
+                print("Person far away → move forward")
+                self.move_forward()
+            elif person_height > self.target_max_height:
+                print("Person too close → stop")
+                self.stop()
+            else:
+                print("Distance okay, adjusting heading...")
+
+            # --- Direction logic ---
+            if direction == "centered":
+                if abs(angle - 90) > 10:
+                    turn_dir = "left" if angle < 90 else "right"
+                    self.turn(turn_dir, angle)
+                else:
+                    print("Centered and aligned.")
+            elif direction in ["left", "right"]:
+                self.turn(direction, angle)
 
             time.sleep(0.2)
+
 
 if __name__ == "__main__":
     bot = FollowerBot()
