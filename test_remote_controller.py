@@ -1,49 +1,57 @@
+
 # --- Imports ---
-from gpiozero import Button, DigitalOutputDevice
-from time import sleep
+
+import lgpio
+import time
 
 # --- Definitions ---
 
-# Vi använder BOARD-numrering i din originalkod,
-# men gpiozero använder BCM som standard.
-# Du kan antingen ändra till BCM-nr, eller lägga till pin_factory om du vill använda BOARD.
-# Här antar vi att du använder BCM för enkelhetens skull.
+button_pins = [22, 23, 17, 27]
 
-move_forward_pin = 22   # motsvarar BOARD 15
-move_backwards_pin = 23 # motsvarar BOARD 16
-turn_right_pin = 17     # motsvarar BOARD 11
-turn_left_pin = 27      # motsvarar BOARD 13
+move_forward_button_pin = 22
+move_backwards_button_pin = 23
+turn_right_button_pin = 17
+turn_left_button_pin = 27
+
+# --- Setup ---
+
+handle = lgpio.gpiochip_open(0) # Opens GPIO controller 0 and returns a handle
+
+for button_pin in button_pins:
+    lgpio.gpio_claim_input(handle, button_pin) # Initializes all pins as inputs
 
 # --- Functions ---
 
-def press_without_transistor(pin):
-    """Simulera knapptryck utan transistor"""
-    output = DigitalOutputDevice(pin, active_high=True, initial_value=False)
-    output.on()   # Sätt HIGH (eller LOW beroende på din krets)
-    sleep(0.5)
-    output.off()
-    output.close()
+def press_without_transistor(button_pin):
+    lgpio.gpio_claim_output(handle, button_pin, 0) # Drive the pin LOW
+    time.sleep(0.5) # Wait for half a second
+    lgpio.gpio_claim_input(handle, button_pin) # Set the pin to input again (High impedance)
 
-def press_with_transistor(pin):
-    """Simulera knapptryck med transistor"""
-    output = DigitalOutputDevice(pin, active_high=False, initial_value=True)
-    output.on()
-    sleep(0.5)
-    output.off()
-    output.close()
+def press_with_transistor(button_pin):
+    lgpio.gpio_claim_output(handle, button_pin, 1) # Drive the pin HIGH
+    time.sleep(0.5) # Wait for half a second
+    lgpio.gpio_claim_input(handle, button_pin) # Set the pin to input again (High impedance)
 
 # --- Testing ---
 
 print("Trying to move forward...")
-press_without_transistor(move_forward_pin)
+
+press_without_transistor(move_forward_button_pin)
 
 print("Trying to move backwards...")
-press_with_transistor(move_backwards_pin)
+
+press_with_transistor(move_backwards_button_pin)
 
 print("Trying to turn right...")
-press_with_transistor(turn_right_pin)
+
+press_with_transistor(turn_right_button_pin)
 
 print("Trying to turn left...")
-press_without_transistor(turn_left_pin)
+
+press_without_transistor(turn_left_button_pin)
 
 print("Testing done!")
+
+# --- Cleanup ---
+
+lgpio.gpiochip_close(handle) # Closes the GPIO controller
