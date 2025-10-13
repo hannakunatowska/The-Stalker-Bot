@@ -185,7 +185,7 @@ def get_tracking_data():
             direction (str): "left", "right", "centered", or "limit reached".
             obstacle (bool): True if an obstacle is detected.
     """
-    return last_angle, last_direction, last_obstacle
+    return last_angle, last_direction, last_obstacle, person_height_norm
 
 # --- Main Execution Block ---
 
@@ -233,6 +233,7 @@ if __name__ == "__main__":
         last_results = parse_detections(picam2.capture_metadata())
 
         person_detections = [d for d in last_results if intrinsics.labels[int(d.category)] == "person"]
+        person_height_norm = None
 
         if person_detections:
             person = person_detections[0]
@@ -240,6 +241,7 @@ if __name__ == "__main__":
             x_center = x + w / 2
             frame_width = picam2.stream_configuration("main")["size"][0]
             x_center_normalized = x_center / frame_width
+            person_height_norm = h / frame_height  # <--- NEW: normalized height
             update_servo_tracking(x_center_normalized)
         else:
             print("No person detected.")
