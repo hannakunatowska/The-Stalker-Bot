@@ -29,35 +29,35 @@ def press(button_pin):
 
 # --- Testing ---
 
-print("Trying to move forward...")
+print("\nTrying to move forward...")
 
 press(move_forward_button_pin)
 time.sleep(1)
 press(move_forward_button_pin)
 time.sleep(1)
 
-print("Trying to move backwards...")
+print("\nTrying to move backwards...")
 
 press(move_backwards_button_pin)
 time.sleep(1)
 press(move_backwards_button_pin)
 time.sleep(1)
 
-print("Trying to turn right...")
+print("\nTrying to turn right...")
 
 press(turn_right_button_pin)
 time.sleep(1)
 press(turn_right_button_pin)
 time.sleep(1)
 
-print("Trying to turn left...")
+print("\nTrying to turn left...")
 
 press(turn_left_button_pin)
 time.sleep(1)
 press(turn_left_button_pin)
 time.sleep(1)
 
-print("Testing done!")
+print("\nTesting done!\n")
 
 # --- Cleanup ---
 
