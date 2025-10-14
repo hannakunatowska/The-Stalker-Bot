@@ -6,7 +6,7 @@ import time
 
 # --- Definitions ---
 
-button_pins = [22, 23, 17, 27]
+button_pins = [17, 22, 23, 27]
 
 move_forward_button_pin = 22
 move_backwards_button_pin = 23
