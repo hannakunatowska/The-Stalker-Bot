@@ -2,6 +2,7 @@
 import time
 import camera_servo
 from buttons import press_with_transistor, press_without_transistor
+from ultrasonic_sensor import UltrasonicSensor
 
 class FollowerBot:
     def __init__(self):
@@ -9,7 +10,10 @@ class FollowerBot:
         self.turn_time_per_degree = 0.9 / 90  # 0.01 s per degree
         self.target_min_height = 0.45  # too far
         self.target_max_height = 0.60  # too close
+        self.safe_distance_cm = 40  
         print("FollowerBot initialized.")
+
+        self.ultra = UltrasonicSensor(trigger_pin=23, echo_pin=24)
 
     def move_forward(self, duration=0.3):
         print("Moving forward")
@@ -37,10 +41,19 @@ class FollowerBot:
         while True:
             angle, direction, obstacle, person_height = camera_servo.get_tracking_data()
 
+            distance_cm = self.ultra.get_distance()
+            too_close = distance_cm <= self.safe_distance_cm
+            
             if obstacle:
                 self.avoid_obstacle()
                 continue
 
+            if too_close:
+                print("Too close.")
+                self.stop()
+                time.sleep(0.5)
+                continue
+                
             if person_height is None:
                 print("No person detected, waiting...")
                 self.stop()
