@@ -24,7 +24,7 @@ for button_pin in button_pins:
 
 def press(button_pin):
     lgpio.gpio_claim_output(handle, button_pin, 1) # Drive the pin HIGH
-    time.sleep(0.5) # Wait for half a second
+    time.sleep(0.1) # Wait for half a second
     lgpio.gpio_claim_input(handle, button_pin) # Set the pin to input again (high impedance)
 
 # --- Testing ---
