@@ -22,33 +22,40 @@ for button_pin in button_pins:
 
 # --- Functions ---
 
-def press_without_transistor(button_pin):
-    lgpio.gpio_claim_output(handle, button_pin, 0) # Drive the pin LOW
-    time.sleep(0.5) # Wait for half a second
-    lgpio.gpio_claim_input(handle, button_pin) # Set the pin to input again (High impedance)
-
-def press_with_transistor(button_pin):
+def press(button_pin):
     lgpio.gpio_claim_output(handle, button_pin, 1) # Drive the pin HIGH
     time.sleep(0.5) # Wait for half a second
-    lgpio.gpio_claim_input(handle, button_pin) # Set the pin to input again (High impedance)
+    lgpio.gpio_claim_input(handle, button_pin) # Set the pin to input again (high impedance)
 
 # --- Testing ---
 
 print("Trying to move forward...")
 
-press_without_transistor(move_forward_button_pin)
+press(move_forward_button_pin)
+time.sleep(1)
+press(move_forward_button_pin)
+time.sleep(1)
 
 print("Trying to move backwards...")
 
-press_with_transistor(move_backwards_button_pin)
+press(move_backwards_button_pin)
+time.sleep(1)
+press(move_backwards_button_pin)
+time.sleep(1)
 
 print("Trying to turn right...")
 
-press_with_transistor(turn_right_button_pin)
+press(turn_right_button_pin)
+time.sleep(1)
+press(turn_right_button_pin)
+time.sleep(1)
 
 print("Trying to turn left...")
 
-press_without_transistor(turn_left_button_pin)
+press(turn_left_button_pin)
+time.sleep(1)
+press(turn_left_button_pin)
+time.sleep(1)
 
 print("Testing done!")
 
