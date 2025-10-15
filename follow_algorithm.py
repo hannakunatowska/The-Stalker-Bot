@@ -49,12 +49,21 @@ def calculate_car_action(angle, my_pos , target_pos):
     angle_to_target_degrees =  angle_between_points(my_pos, target_pos)
     angle_to_steer = angle_difference(angle, angle_to_target_degrees)
 
-    if (angle_to_steer > 0):
+    """if (angle_to_steer > 0):
         action["right"] = True
     else:
+        action["left"] = True"""
+    
+    if angle_to_steer > 10:
+        action["right"] = True
+    elif angle_to_steer < -10:
         action["left"] = True
 
     distance = calculate_distance_to_target(my_pos, target_pos)
+
+    if distance < 80:   # You can adjust this threshold later
+        return {"up": False, "down": False, "left": False, "right": False}
+
     if distance > 150:
         action["up"] = True
     else:
