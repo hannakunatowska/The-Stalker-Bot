@@ -219,3 +219,21 @@ if not intrinsics.task:
 picam2 = Picamera2(imx500.camera_num)
 config = picam2.create_preview_configuration(controls={"FrameRate": intrinsics.inference_rate}, buffer_count=12)
 picam2.start(config, show_preview=True)
+
+if __name__ == "__main__":
+    print("Starting standalone camera-servo tracking test...")
+    try:
+        while True:
+            angle, direction, obstacle, person_height = get_tracking_data()
+
+            if person_height:
+                print(f"→ Person height (normalized): {person_height:.2f}")
+            if obstacle:
+                print("⚠️ Obstacle detected!")
+            
+            time.sleep(0.2)
+
+    except KeyboardInterrupt:
+        print("Stopped by user.")
+        picam2.stop()
+
