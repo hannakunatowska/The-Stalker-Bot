@@ -3,7 +3,8 @@ import random
 import pygame
 import math
 import sys
-from follow_algorithm import calculate_car_action
+# from follow_algorithm import calculate_car_action, distance, angle_to_steer
+import follow_algorithm
 
 pygame.init()
 WIDTH, HEIGHT = 1200, 800
@@ -153,7 +154,7 @@ while True:
     #action = {"up": True, "down": False, "left": False, "right": False}
     # action = player_car.generate_action_from_self_follow()
     #action = player_car.generate_action_from_pressing_keys() 
-    action = calculate_car_action(player_car.angle, player_car.pos, ai_car.pos)
+    action = follow_algorithm.calculate_car_action(player_car.angle, player_car.pos, ai_car.pos)
 
     #shouldI turn or not(other car postiioton)
     #shoudl I gas or revvwes(other car)
@@ -165,7 +166,12 @@ while True:
     screen.fill(BG)
     player_car.draw(screen, debug=True)
     ai_car.draw(screen, debug=True)
-    pygame.display.flip()
 
+    info_text = f"Distance: {follow_algorithm.distance:.2f} px  Angle: {follow_algorithm.angle_to_steer:.2f} deg"
+    text_surface = font.render(info_text, True, (255,255,255))
+    screen.blit(text_surface, (20, 20))
+
+    pygame.display.flip()
+    
     # animation speed
     clock.tick(60)
