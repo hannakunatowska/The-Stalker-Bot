@@ -13,6 +13,7 @@ target_minimum_height = 0.45
 target_maximum_height = 0.6
 safe_distance_in_cm = 40
 max_angle_offset = 10
+follow_loop_update_time = 0.1
 
 # --- Setup ---
 
@@ -26,7 +27,7 @@ def move_forward(press_duration = 0.3):
     Moves the car forward.
 
     Arguments:
-        "press_duration":
+        "press_duration": The duration of the simulated button press (default set to 0.3 s).
 
     Returns:
         None
@@ -34,7 +35,7 @@ def move_forward(press_duration = 0.3):
     """
 
     press(22, press_duration)
-    print(f"Moved forward for {press_duration} s")
+    print(f"\nMoved forward for {press_duration} s")
 
 def move_backwards(press_duration = 0.3):
     
@@ -42,7 +43,7 @@ def move_backwards(press_duration = 0.3):
     Moves the car backwards.
 
     Arguments:
-        "press_duration":
+        "press_duration": The duration of the simulated button press (default set to 0.3 s).
 
     Returns:
         None
@@ -50,7 +51,7 @@ def move_backwards(press_duration = 0.3):
     """
 
     press(25, press_duration)
-    print(f"Moved backwards for {press_duration} s")
+    print(f"\nMoved backwards for {press_duration} s")
 
 def stop():
 
@@ -89,7 +90,9 @@ def turn(direction, angle):
     if direction == "left":
         press(27, turn_time)
     
-    print(f"Turned {direction} for {turn_time:.2f}s (angle {angle:.1f})")
+    move_forward(turn_time)
+    
+    print(f"\nTurned {direction} for {turn_time:.2f}s (angle was {angle:.1f})")
 
 def avoid_obstacle():
 
@@ -104,7 +107,7 @@ def avoid_obstacle():
     
     """
 
-    print("Obstacle detected! Stopping.")
+    print("\nObstacle detected, stopping...")
     stop()
 
 def follow():
@@ -127,27 +130,27 @@ def follow():
         distance_in_cm = ultrasonicSensor.get_distance() # Gets distance to closest obstacle from ultrasonic sensor
         
         if obstacle or distance_in_cm <= safe_distance_in_cm: # If either the AI camera or the ultrasonic sensor detects an obstacle:
-            print("Obstacle detected, trying to avoid it...")
+            print("\nObstacle detected, trying to avoid it...")
             avoid_obstacle()
             continue
             
         if person_height is None:
-            print("No person detected, waiting...")
+            print("\nNo person detected, waiting...")
             stop()
             continue
 
-        print(f"Normalized person height (Person height / Total frame height) = {person_height:.2f}")
+        print(f"\nNormalized person height (Person height / Total frame height) = {person_height:.2f}")
 
         if person_height < target_minimum_height:
-            print("Person is too far away, trying to move forward...")
+            print("\nPerson is too far away, trying to move forward...")
             move_forward()
 
         elif person_height > target_maximum_height:
-            print("Person is too close...")
+            print("\nPerson is too close...")
             stop()
 
         else:
-            print("Distance is OK...")
+            print("\nDistance is OK...")
 
         if direction == "centered":
 
@@ -160,12 +163,12 @@ def follow():
                     turn("right", angle)
 
             else:
-                print("Centered and aligned.")
+                print("\nCentered and aligned.")
 
-        elif direction in ["left", "right"]:
+        elif direction in ("left", "right"):
             turn(direction, angle)
 
-        time.sleep(0.2)
+        time.sleep(follow_loop_update_time)
 
 if __name__ == "__main__":
     follow()
