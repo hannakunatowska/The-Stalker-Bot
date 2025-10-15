@@ -2,7 +2,7 @@
 # --- Imports ---
 
 import time
-import camera_servo
+import ai_detection
 from remote_controller import press
 from ultrasonic_sensor import UltrasonicSensor
 
@@ -15,7 +15,7 @@ safe_distance_in_cm = 40
 
 # --- Setup ---
 
-ultrasonic_sensor = UltrasonicSensor(trigger_pin = 23, echo_pin = 24)
+ultrasonicSensor = UltrasonicSensor(trigger_pin = 23, echo_pin = 24)
 
 # --- Functions ---
 
@@ -102,7 +102,7 @@ def avoid_obstacle():
         None
     
     """
-    
+
     print("Obstacle detected! Stopping.")
     stop()
 
@@ -120,16 +120,16 @@ def follow():
     """
 
     while True:
-        angle, direction, obstacle, person_height = camera_servo.get_tracking_data()
 
-        distance_cm = ultra.get_distance()
-        too_close = distance_cm <= .safe_distance_cm
-        
+        angle, direction, obstacle, person_height = ai_detection.get_tracking_data() # Gets necessary data from the ai camera
+
+        distance_in_cm = ultrasonicSensor.get_distance() # Gets distance to closest obstacle from ultrasonic sensor
+                
         if obstacle:
             avoid_obstacle()
             continue
 
-        if too_close:
+        if distance_in_cm <= safe_distance_in_cm:
             print("Too close.")
             stop()
             time.sleep(0.5)
@@ -170,5 +170,4 @@ def follow():
 
 
 if __name__ == "__main__":
-    bot = FollowerBot()
-    bot.follow()
+    follow()
