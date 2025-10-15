@@ -1,5 +1,7 @@
 import math
 
+angle_to_steer = 0
+distance = 0
 
 def angle_between_points(p1, p2):
     """
@@ -38,10 +40,9 @@ def calculate_distance_to_target(my_pos, target_pos):
     dy = my_pos[1] - target_pos[1]
     return math.sqrt(dx**2 + dy**2)
 
-
-
-
 def calculate_car_action(angle, my_pos , target_pos):
+
+    global distance, angle_to_steer
 
     action = {"up": False, "down": False, "left": False, "right": False}
 
