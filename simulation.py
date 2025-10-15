@@ -1,27 +1,27 @@
+# --- imports ---
 import random
-
 import pygame
 import math
 import sys
-# from follow_algorithm import calculate_car_action, distance, angle_to_steer
 import follow_algorithm
 
+# --- definitions ---
 pygame.init()
 WIDTH, HEIGHT = 1200, 800
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Follow Human simiulation")
+pygame.display.set_caption("Follow Human simulation")
 clock = pygame.time.Clock()
 burst_timer = 0
 distance = follow_algorithm.distance
 angle_to_steer = follow_algorithm.angle_to_steer
 
-# --- Colors ---
+# Colors
 BG = (30, 130, 30)
 PLAYER_COLOR = (220, 40, 40)
 AI_COLOR = (40, 100, 220)
 DEBUG = (255, 255, 255)
 
-# --- Car Class ---
+# --- functions ---
 class Car:
     def __init__(self, x, y, color, is_player=False):
         self.pos = [x, y]
@@ -96,9 +96,6 @@ class Car:
 
         
         action = { "up": False, "down": False, "left": False, "right": False }
-
-        # --- STEERING (as before) ---
-        # ... (same steering logic we wrote earlier)
 
         if distance > 200:  
             action["up"] = True   # full speed far away
