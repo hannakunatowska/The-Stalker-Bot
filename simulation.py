@@ -3,6 +3,7 @@ import random
 import pygame
 import math
 import sys
+from follow_algorithm import calculate_car_action
 
 pygame.init()
 WIDTH, HEIGHT = 1200, 800
@@ -149,13 +150,16 @@ while True:
 
     # calculate action for follow car
     # action = player_car.generate_action_from_pressing_keys()
-    action = {"up": True, "down": False, "left": False, "right": False}
+    #action = {"up": True, "down": False, "left": False, "right": False}
     # action = player_car.generate_action_from_self_follow()
-    shouldI turn or not(other car postiioton)
-    shoudl I gas or revvwes(other car)
+    #action = player_car.generate_action_from_pressing_keys() 
+    action = calculate_car_action(player_car.angle, player_car.pos, ai_car.pos)
+
+    #shouldI turn or not(other car postiioton)
+    #shoudl I gas or revvwes(other car)
     # Update movement for both cars
     player_car.update(action)
-    # ai_car.update()
+    ai_car.update()
 
     # --- Draw ---
     screen.fill(BG)
