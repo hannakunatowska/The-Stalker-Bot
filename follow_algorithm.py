@@ -1,7 +1,13 @@
+# --- imports ---
+
 import math
+
+# --- definitions ---
 
 angle_to_steer = 0
 distance = 0
+
+# --- functions ---
 
 def angle_between_points(p1, p2):
     """
