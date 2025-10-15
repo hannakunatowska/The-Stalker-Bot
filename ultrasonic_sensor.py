@@ -32,8 +32,8 @@ def get_distance():
 
     """
 
-    raw_distance_data = ultrasonicSensor.distance  # Returns a value between 0.0 and 1.0 (relative to max_distance)
-    distance_in_cm = raw_distance_data * max_distance_in_m * 100
+    distance_in_m = ultrasonicSensor.distance  # Returns a value between 0.0 and 1.0 (relative to max_distance)
+    distance_in_cm = distance_in_m * 100
 
     return round(distance_in_cm, 1)
 

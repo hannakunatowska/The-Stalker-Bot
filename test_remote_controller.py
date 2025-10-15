@@ -3,7 +3,7 @@
 
 import lgpio
 import time
-from remote_controller import button_pins, move_forward_button_pin, move_backwards_button_pin, turn_left_button_pin, turn_right_button_pin
+from remote_controller import button_pins, move_forward_button_pin, move_backwards_button_pin, turn_left_button_pin, turn_right_button_pin, press
 
 # --- Setup ---
 
@@ -11,13 +11,6 @@ handle = lgpio.gpiochip_open(0) # Opens GPIO controller 0 and returns a handle
 
 for button_pin in button_pins:
     lgpio.gpio_claim_input(handle, button_pin) # Initializes all pins as inputs
-
-# --- Functions ---
-
-def press(button_pin):
-    lgpio.gpio_claim_output(handle, button_pin, 1) # Drive the pin HIGH
-    time.sleep(0.1) # Wait for half a second
-    lgpio.gpio_claim_input(handle, button_pin) # Set the pin to input again (high impedance)
 
 # --- Testing ---
 
