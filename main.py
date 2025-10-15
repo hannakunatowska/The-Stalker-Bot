@@ -12,6 +12,7 @@ turn_time_per_degree = 0.9 / 90
 target_minimum_height = 0.45
 target_maximum_height = 0.6
 safe_distance_in_cm = 40
+max_angle_offset = 10
 
 # --- Setup ---
 
@@ -121,45 +122,43 @@ def follow():
 
     while True:
 
-        angle, direction, obstacle, person_height = ai_detection.get_tracking_data() # Gets necessary data from the ai camera
+        angle, direction, obstacle, person_height = ai_detection.get_tracking_data() # Gets necessary data from the AI camera
 
         distance_in_cm = ultrasonicSensor.get_distance() # Gets distance to closest obstacle from ultrasonic sensor
-                
-        if obstacle:
+        
+        if obstacle or distance_in_cm <= safe_distance_in_cm: # If either the AI camera or the ultrasonic sensor detects an obstacle:
+            print("Obstacle detected, trying to avoid it...")
             avoid_obstacle()
-            continue
-
-        if distance_in_cm <= safe_distance_in_cm:
-            print("Too close.")
-            stop()
-            time.sleep(0.5)
             continue
             
         if person_height is None:
             print("No person detected, waiting...")
             stop()
-            time.sleep(0.3)
             continue
 
-        # --- Distance logic using person height ---
-        print(f"Person height (normalized): {person_height:.2f}")
+        print(f"Normalized person height (Person height / Total frame height) = {person_height:.2f}")
 
         if person_height < target_minimum_height:
-            print("Person far away → move forward")
+            print("Person is too far away, trying to move forward...")
             move_forward()
 
         elif person_height > target_maximum_height:
-            print("Person too close → stop")
+            print("Person is too close...")
             stop()
 
         else:
-            print("Distance okay, adjusting heading...")
+            print("Distance is OK...")
 
-        # --- Direction logic ---
         if direction == "centered":
-            if abs(angle - 90) > 10:
-                turn_dir = "left" if angle < 90 else "right"
-                turn(turn_dir, angle)
+
+            if abs(angle - 90) > max_angle_offset:
+
+                if angle < 90:
+                    turn("left", angle)
+                
+                else:
+                    turn("right", angle)
+
             else:
                 print("Centered and aligned.")
 
@@ -167,7 +166,6 @@ def follow():
             turn(direction, angle)
 
         time.sleep(0.2)
-
 
 if __name__ == "__main__":
     follow()
