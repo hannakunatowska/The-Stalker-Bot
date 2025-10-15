@@ -11,6 +11,9 @@ WIDTH, HEIGHT = 1200, 800
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Follow Human simiulation")
 clock = pygame.time.Clock()
+burst_timer = 0
+distance = follow_algorithm.distance
+angle_to_steer = follow_algorithm.angle_to_steer
 
 # --- Colors ---
 BG = (30, 130, 30)
@@ -66,6 +69,8 @@ class Car:
         self.pos[1] %= HEIGHT
 
     def _update_player(self, action):
+        global burst_timer
+
         # Acceleration
         if action["up"]:
             self.speed += self.acceleration
@@ -88,6 +93,25 @@ class Car:
                 self.angle += steer
 
         self.angle %= 360
+
+        
+        action = { "up": False, "down": False, "left": False, "right": False }
+
+        # --- STEERING (as before) ---
+        # ... (same steering logic we wrote earlier)
+
+        if distance > 200:  
+            action["up"] = True   # full speed far away
+        
+        elif distance > 120:
+            burst_timer = (burst_timer + 1) % 20
+            action["up"] = burst_timer < 10  # ON for 10 frames, OFF for 10
+
+        else:
+            # Close enough — full stop
+            action = { "up": False, "down": False, "left": False, "right": False }
+
+        return action
 
     def _update_scripted(self):
         """Simple AI pattern: drive forward, then turn."""
@@ -167,11 +191,14 @@ while True:
     player_car.draw(screen, debug=True)
     ai_car.draw(screen, debug=True)
 
-    info_text = f"Distance: {follow_algorithm.distance:.2f} px  Angle: {follow_algorithm.angle_to_steer:.2f} deg"
+    info_text = f"Distance: {distance:.2f} px  Angle: {angle_to_steer:.2f} deg"
     text_surface = font.render(info_text, True, (255,255,255))
     screen.blit(text_surface, (20, 20))
 
     pygame.display.flip()
     
+    distance = follow_algorithm.distance
+    angle_to_steer = follow_algorithm.angle_to_steer
+
     # animation speed
     clock.tick(60)
