@@ -3,15 +3,7 @@
 
 import lgpio
 import time
-
-# --- Definitions ---
-
-button_pins = [17, 22, 25, 27]
-
-move_forward_button_pin = 22
-move_backwards_button_pin = 25
-turn_right_button_pin = 17
-turn_left_button_pin = 27
+from remote_controller import button_pins, move_forward_button_pin, move_backwards_button_pin, turn_left_button_pin, turn_right_button_pin
 
 # --- Setup ---
 

@@ -1,43 +1,72 @@
-# main_follower.py
+
+# --- Imports ---
+
 import time
 import camera_servo
-from buttons import press_with_transistor, press_without_transistor
+from remote_controller import press
 from ultrasonic_sensor import UltrasonicSensor
 
 class FollowerBot:
+
     def __init__(self):
-        # constants
+
         self.turn_time_per_degree = 0.9 / 90  # 0.01 s per degree
         self.target_min_height = 0.45  # too far
         self.target_max_height = 0.60  # too close
         self.safe_distance_cm = 40  
         print("FollowerBot initialized.")
 
-        self.ultra = UltrasonicSensor(trigger_pin=23, echo_pin=24)
+        self.ultra = UltrasonicSensor(trigger_pin = 23, echo_pin = 24)
 
-    def move_forward(self, duration=0.3):
-        print("Moving forward")
-        press_without_transistor(22)
-        time.sleep(duration)
+    def move_forward(self, press_duration = 0.3):
+        press(22, press_duration)
+        print(f"Moved forward for {press_duration} s")
 
     def stop(self):
         print("Stop")
         time.sleep(0.2)
 
     def turn(self, direction, angle):
-        turn_pin = 17 if direction == "right" else 27
-        press_func = press_with_transistor if direction == "right" else press_without_transistor
+
+        """
+        Turns the car.
+
+        Arguments:
+            "direction":
+            "angle":
+
+        Returns:
+            None
+        
+        """
+
         turn_time = abs(angle - 90) * self.turn_time_per_degree
-        print(f"↪️ Turning {direction} for {turn_time:.2f}s (angle {angle:.1f})")
-        press_func(turn_pin)
-        time.sleep(turn_time)
+
+        if direction == "right":
+            press(17, turn_time)
+
+        else:
+            press(27, turn_time)
+        
+        print(f"Turned {direction} for {turn_time:.2f}s (angle {angle:.1f})")
 
     def avoid_obstacle(self):
         print("Obstacle detected! Stopping.")
         self.stop()
 
     def follow(self):
-        print("Starting person-follow mode...")
+
+        """
+        Runs the person-following loop.
+
+        Arguments:
+            None
+
+        Returns:
+            None
+        
+        """
+
         while True:
             angle, direction, obstacle, person_height = camera_servo.get_tracking_data()
 
