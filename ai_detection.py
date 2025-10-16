@@ -239,7 +239,7 @@ def update_servo_tracking(x_center_normalized):
     global servo_position
 
     threshold = 0.07
-    step = 0.05
+    step = 0.04
     smooth_speed = 0.01
     change_threshold = 0.005
     max_pos = 1.0
