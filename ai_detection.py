@@ -240,33 +240,38 @@ def update_servo_tracking(x_center_normalized):
 
     threshold = 0.07
     step = 0.05
-    change_threshold = 0.01
+    smooth_speed = 0.01
+    change_threshold = 0.005
     max_pos = 1.0
     min_pos = -1.0
     direction = None
 
-    new_pos = servo_position
+    target_pos = servo_position
 
     if x_center_normalized > 0.5 + threshold:
         if servo_position > min_pos:
-            new_pos = servo_position - step
+            target_pos = servo_position - step
             direction = "left"
         else:
             direction = "limit reached (left)"
     elif x_center_normalized < 0.5 - threshold:
         if servo_position < max_pos:
-            new_pos = servo_position + step
+            target_pos = servo_position + step
             direction = "right"
         else:
             direction = "limit reached (right)"
     else:
-        new_pos = 0
         direction = "centered"
 
-    new_pos = max(min_pos, min(max_pos, new_pos))
-    if abs(new_pos - servo_position) >= change_threshold:
-        servo_position = new_pos
-        servo.value = servo_position
+    target_pos = max(min_pos, min(max_pos, target_pos))
+    
+    if abs(target_pos - servo_position) >= change_threshold:
+        steps = int(abs(target_pos - servo_position) / smooth_speed)
+        direction_sign = 1 if target_pos > servo_position else -1
+        for _ in range(steps):
+            servo_position += direction_sign * smooth_speed
+            servo.value = servo_position
+            time.sleep(0.01) 
 
     angle = (servo_position + 1) * 90
     print(f"Person x: {x_center_normalized:.2f} | Servo pos: {servo_position:.2f} | Angle: {angle:.1f}° | Direction: {direction}")
