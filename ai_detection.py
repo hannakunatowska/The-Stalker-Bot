@@ -84,7 +84,7 @@ def get_labels():
 
 def draw_detections(request, stream="main"):
     """Draws the detections for this request onto the ISP output."""
-    detections = last_results
+    detections = last_detections
     if detections is None:
         return
 
@@ -218,8 +218,8 @@ if not intrinsics.task:
     intrinsics.task = "object detection"
 picam2 = Picamera2(imx500.camera_num)
 config = picam2.create_preview_configuration(controls={"FrameRate": intrinsics.inference_rate}, buffer_count=12)
-picam2.start(config, show_preview=True)
 picam2.pre_callback = draw_detections
+picam2.start(config, show_preview=True)
 if intrinsics.preserve_aspect_ratio:
     imx500.set_auto_aspect_ratio()
 
