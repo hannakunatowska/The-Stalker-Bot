@@ -37,4 +37,4 @@ def parse_detections(metadata: dict):
 
     np_outputs = imx500.get_outputs(metadata, add_batch=True)
     input_w, input_h = imx500.get_input_size()
-    if np_output_
+    if np_output_:
