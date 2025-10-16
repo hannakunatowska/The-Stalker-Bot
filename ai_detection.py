@@ -219,6 +219,9 @@ if not intrinsics.task:
 picam2 = Picamera2(imx500.camera_num)
 config = picam2.create_preview_configuration(controls={"FrameRate": intrinsics.inference_rate}, buffer_count=12)
 picam2.start(config, show_preview=True)
+picam2.pre_callback = draw_detections
+if intrinsics.preserve_aspect_ratio:
+    imx500.set_auto_aspect_ratio()
 
 if __name__ == "__main__":
     print("Starting standalone camera-servo tracking test...")
