@@ -14,7 +14,7 @@ from picamera2.devices.imx500 import NetworkIntrinsics, postprocess_nanodet_dete
 from picamera2.devices.imx500.postprocess import scale_boxes
 from gpiozero import Servo
 
-from libcamera import Transform
+import libcamera
 
 # --- Definitions ---
 
