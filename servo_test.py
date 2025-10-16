@@ -90,7 +90,7 @@ def parse_detections(metadata):
     max_detections = args.max_detections # Integer maximum number of detections to return
 
     numpy_outputs = imx500.get_outputs(metadata, add_batch = True) # Gets the output tensors from the metadata as a list of NumPy arrays
-    input_width, input_height = imx500.get_input_size # Gets the input size of the model
+    input_width, input_height = imx500.get_input_size() # Gets the input size of the model
 
     if numpy_outputs is None: # If no outputs are available:
         return last_detections # Return the last detections
