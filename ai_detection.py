@@ -1,16 +1,18 @@
+
 # --- Imports ---
 
+import time
 import argparse
 import sys
 from functools import lru_cache
 import cv2
 import numpy as np
+
 from picamera2 import MappedArray, Picamera2
 from picamera2.devices import IMX500
 from picamera2.devices.imx500 import NetworkIntrinsics, postprocess_nanodet_detection
 from picamera2.devices.imx500.postprocess import scale_boxes
 from gpiozero import Servo
-import time
 
 # --- Definitions ---
 
@@ -18,7 +20,7 @@ last_detections = []
 
 # --- Setup ---
 
-servo = Servo(18, min_pulse_width=0.5 / 1000, max_pulse_width=2.5 / 1000)
+servo = Servo(18, min_pulse_width = 0.5 / 1000, max_pulse_width = 2.5 / 1000)
 servo_position = 0.0
 servo.value = servo_position
 
@@ -217,6 +219,7 @@ intrinsics = imx500.network_intrinsics or NetworkIntrinsics()
 if not intrinsics.task:
     intrinsics.task = "object detection"
 picam2 = Picamera2(imx500.camera_num)
+picam2.rotation = 180
 config = picam2.create_preview_configuration(controls={"FrameRate": intrinsics.inference_rate}, buffer_count=12)
 picam2.pre_callback = draw_detections
 picam2.start(config, show_preview=True)
