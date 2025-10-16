@@ -17,9 +17,12 @@ from picamera2.devices.imx500.postprocess import scale_boxes # Imports the scale
 
 # --- Definitions ---
 
-last_detections = []
 servo_minimum_pulse_width = 0.5 / 1000
 servo_maximum_pulse_width = 2.5 / 1000
+
+last_detections = []
+
+ignore_dash_labels = False
 
 # --- Servo setup ---
 
@@ -73,7 +76,7 @@ def parse_detections(metadata):
     bounding_box_normalization = intrinsics.bbox_normalization # Boolean indicating if bounding boxes are normalized
     bounding_box_order = intrinsics.bbox_order # String indicating the order of bounding box coordinates ("yx" or "xy")
 
-    threshold = args.threshold # Float confidence threshold for filtering detections
+    confidence_threshold = args.threshold # Float confidence threshold for filtering detections
     iou = args.iou # Float IoU threshold for non-maximum suppression
     max_detections = args.max_detections # Integer maximum number of detections to return
 
@@ -84,7 +87,7 @@ def parse_detections(metadata):
         return last_detections # Return the last detections
 
     if intrinsics.postprocess == "nanodet": # If the postprocessing method is "nanodet":
-        boxes, confidence_scores, classes = postprocess_nanodet_detection(outputs = numpy_outputs[0], confidence = threshold, iou_thres = iou, max_out_dets = max_detections)[0] # Postprocess the outputs using the nanodet method
+        boxes, confidence_scores, classes = postprocess_nanodet_detection(outputs = numpy_outputs[0], confidence = confidence_threshold, iou_thres = iou, max_out_dets = max_detections)[0] # Postprocess the outputs using the nanodet method
 
         boxes = scale_boxes(boxes, 1, 1, input_height, input_width, False, False) # Scale the bounding boxes to the input size
 
@@ -103,26 +106,59 @@ def parse_detections(metadata):
 
     last_detections = []
 
-    for box, confidence_score, category in zip(boxes, confidence_scores, classes): # For every box, score and category:
-        if confidence_score > threshold: # If the score is larger than the threshold:
+    for box, confidence_score, category in zip(boxes, confidence_scores, classes): # For every box, confidence score and category:
+        if confidence_score > confidence_threshold: # If the confidence score is larger than the confidence threshold:
             detection = Detection(box, category, confidence_score, metadata) # Create a detection object
             last_detections.append(detection) # Add it to "last_detections"
 
     return last_detections
 
 
-@lru_cache
+@lru_cache # Caches the results of the function below (to avoid redundant computations)
 def get_labels():
-    """Gets the labels for the model."""
-    labels = intrinsics.labels
-    if intrinsics.ignore_dash_labels:
-        labels = [label for label in labels if label and label != "-"]
+
+    """
+    Gets the labels for the model from intrinsics, filtering out "-" if required.
+
+    Arguments:
+        None
+
+    Returns:
+        "labels": A list of labels for the model
+        "labels_without_dash_labels": The list of labels, but without the dash labels
+
+    """
+
+    labels = intrinsics.labels # Get the labels from intrinsics
+
+    if intrinsics.ignore_dash_labels: # If the ignore_dash_labels flag is set:
+
+        labels_without_dash_labels = []
+
+        for label in labels: # Go through "labels" and remove every "-" label
+            if label and label != "-":
+                labels_without_dash_labels.append(label)
+        
+        return labels_without_dash_labels
+
     return labels
 
+def draw_detections(request, stream = "main"):
 
-def draw_detections(request, stream="main"):
-    """Draws the detections for this request onto the ISP output."""
-    detections = last_detections
+    """
+    Draws the detections for this request onto the ISP output.
+    
+    Arguments:
+        "request": The Picamera2 request object
+        "stream": The stream name to draw on (default: "main")
+    
+    Returns:
+        None
+
+    """
+
+    detections = last_detections # Get the last detection results
+
     if detections is None:
         return
 
