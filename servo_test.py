@@ -19,14 +19,15 @@ from picamera2.devices.imx500.postprocess import scale_boxes # Imports the scale
 
 servo_minimum_pulse_width = 0.5 / 1000
 servo_maximum_pulse_width = 2.5 / 1000
-# --- Servo control tuning (place near top with other globals) ---
+# --- Minimal tuning (paste near top with other globals) ---
 _smoothed_x = None          # internal smoothed centroid (0..1)
-SMOOTH_ALPHA_X = 0.35       # 0..1: larger = follow raw faster, smaller = smoother
-KP = 1.0                    # proportional gain (try 0.6..1.6)
-MAX_STEP = 0.06             # max change to servo_position per update (clamps velocity)
-MIN_MOVE = 0.003            # minimal change required to actually write to servo
+SMOOTH_ALPHA_X = 0.25       # 0..1: lower = smoother but slower; try 0.15..0.35
+KP = 0.9                    # proportional gain (try 0.6..1.2)
+MAX_STEP = 0.05             # max change to servo_position per update (rate limit)
+MIN_MOVE = 0.005            # ignore tiny moves below this
 INVERT_SERVO = False        # set True if servo moves opposite direction
-CENTERED_THRESHOLD = 0.05   # <= this (target_pos magnitude) => report "centered"
+CENTERED_THRESHOLD = 0.03   # normalized target threshold to call "centered"
+
 
 
 last_detections = []
@@ -218,72 +219,52 @@ def get_args():
 
 def update_servo_tracking(x_center_normalized):
     """
-    Smoother servo control that always returns (angle, direction).
-    Direction will be one of: "right", "left", "centered", "no person", or "limit reached (left/right)".
+    Simple EMA smoothing + P-controller with a rate limit.
+    Returns (angle_degrees_or_None, direction_string).
     """
     global servo_position, _smoothed_x
 
     if x_center_normalized is None:
         return (None, "no person")
 
-    # 1) smooth incoming centroid to reduce detection jitter
+    # 1) EMA smoothing to reduce jitter
     if _smoothed_x is None:
         _smoothed_x = float(x_center_normalized)
     else:
         _smoothed_x += SMOOTH_ALPHA_X * (float(x_center_normalized) - _smoothed_x)
 
-    # 2) map smoothed_x (0..1) to target servo value (-1..+1)
+    # 2) Map to target servo value (-1..+1)
     target_pos = (_smoothed_x - 0.5) * 2.0
     if INVERT_SERVO:
         target_pos = -target_pos
     target_pos = _clamp(target_pos, -1.0, 1.0)
 
-    # If target is basically centered, report centered (but still may do tiny move if needed)
-    is_centered = abs(target_pos) <= CENTERED_THRESHOLD
-
-    # 3) proportional control: compute change
+    # 3) P-controller to compute desired change
     error = target_pos - servo_position
     change = KP * error
 
-    # 4) clamp step (rate limit)
+    # 4) Rate limit
     change = _clamp(change, -MAX_STEP, MAX_STEP)
 
-    # 5) decide whether to act
+    # 5) Decide whether to move (avoid tiny writes)
+    is_centered = abs(target_pos) <= CENTERED_THRESHOLD
     if abs(change) < MIN_MOVE:
-        # Too small to bother moving the servo.
-        # Return current angle and an appropriate direction label (centered if target near center).
-        if is_centered:
-            direction = "centered"
-        else:
-            direction = "right" if error > 0 else "left"
+        direction = "centered" if is_centered else ("right" if error > 0 else "left")
         angle = (servo_position + 1.0) * 90.0
-        print(f"Person x: {_smoothed_x:.3f} | no significant move | Servo pos: {servo_position:.3f} | Angle: {angle:.1f}° | Dir: {direction}")
+        # small debug line (optional)
+        print(f"DBG no-move x={_smoothed_x:.3f} targ={target_pos:.3f} pos={servo_position:.3f} | Angle={angle:.1f} Dir={direction}")
         return angle, direction
 
-    # 6) compute new servo position and clamp to limits
-    new_pos = _clamp(servo_position + change, -1.0, 1.0)
-
-    # detect if we hit limits
-    if new_pos == -1.0 and change < 0:
-        direction = "limit reached (left)"
-    elif new_pos == 1.0 and change > 0:
-        direction = "limit reached (right)"
-    else:
-        # If target is centered, prefer reporting "centered" even if we moved slightly toward center.
-        if is_centered:
-            direction = "centered"
-        else:
-            direction = "right" if change > 0 else "left"
-
-    # 7) apply the move
-    servo_position = new_pos
+    # 6) Apply and clamp
+    servo_position = _clamp(servo_position + change, -1.0, 1.0)
     try:
         servo.value = servo_position
     except Exception as e:
         print("Failed to set servo.value:", e)
 
+    direction = "centered" if is_centered else ("right" if change > 0 else "left")
     angle = (servo_position + 1.0) * 90.0
-    print(f"Person x: {_smoothed_x:.3f} | target: {target_pos:.3f} | step: {change:.4f} | Servo pos: {servo_position:.3f} | Angle: {angle:.1f}° | Dir: {direction}")
+    print(f"DBG move x={_smoothed_x:.3f} targ={target_pos:.3f} step={change:.4f} pos={servo_position:.3f} | Angle={angle:.1f} Dir={direction}")
     return angle, direction
 
 def get_tracking_data():
