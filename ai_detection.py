@@ -2,33 +2,35 @@
 # --- Imports ---
 
 import time
-import argparse
-import sys
-from functools import lru_cache
-import cv2
-import numpy as np
+import argparse # Imports the argparse module, which provides a way to parse command-line arguments
+import sys # Imports the sys module, which provides access to system-specific parameters and functions
+from functools import lru_cache # Imports the lru_cache decorator from the functools module, which is used to cache the results of function calls
+import cv2 # Imports the OpenCV library for image and video processing
+import numpy # Imports the NumPy library for numerical operations on arrays
+from gpiozero import Servo # Imports the Servo class from the gpiozero module for controlling servo motors
 
-from picamera2 import MappedArray, Picamera2
-from picamera2.devices import IMX500
-from picamera2.devices.imx500 import NetworkIntrinsics, postprocess_nanodet_detection
-from picamera2.devices.imx500.postprocess import scale_boxes
-from gpiozero import Servo
-
-import libcamera
+import libcamera # Imports the libcamera module, which provides access to the camera framework
+from picamera2 import MappedArray, Picamera2 # Imports MappedArray and Picamera2 classes for handling camera data and control with the Picamera2 API
+from picamera2.devices import IMX500 # Imports the IMX500 device class, representing Sony’s IMX500 image sensor
+from picamera2.devices.imx500 import NetworkIntrinsics, postprocess_nanodet_detection # Imports NetworkIntrinsics for neural network metadata and postprocess_nanodet_detection for object detection result processing
+from picamera2.devices.imx500.postprocess import scale_boxes # Imports the scale_boxes function for adjusting bounding box coordinates to match image dimensions
 
 # --- Definitions ---
 
 last_detections = []
+servo_minimum_pulse_width = 0.5 / 1000
+servo_maximum_pulse_width = 2.5 / 1000
 
-# --- Setup ---
+# --- Servo setup ---
 
-servo = Servo(18, min_pulse_width = 0.5 / 1000, max_pulse_width = 2.5 / 1000)
-servo_position = 0.0
-servo.value = servo_position
-
+servo = Servo(18, min_pulse_width = servo_minimum_pulse_width, max_pulse_width = servo_maximum_pulse_width) # Creates a servo object on GPIO pin 18 with specified pulse widths
+servo_position = 0.0 # Creates a variable for the servo position and initializes its value to 0.0 (center position)
+servo.value = servo_position # Sets the position to "servo_position"
 
 class Detection:
-    """Represents a single object detection."""
+    """
+    Represents a single object detection.
+    """
 
     def __init__(self, coords, category, conf, metadata):
         """Creates a Detection object recording the bounding box, category and confidence."""
@@ -38,7 +40,16 @@ class Detection:
 
 
 def parse_detections(metadata: dict):
-    """Parse the output tensor into detected objects."""
+
+    """
+    Parse the output tensor into detected objects.
+
+    Arguments:
+
+    Returns:
+        "last_detections":
+    
+    """
     global last_detections
 
     bbox_normalization = intrinsics.bbox_normalization
@@ -59,13 +70,17 @@ def parse_detections(metadata: dict):
             outputs=np_outputs[0], conf=threshold, iou_thres=iou, max_out_dets=max_detections
         )[0]
         boxes = scale_boxes(boxes, 1, 1, input_h, input_w, False, False)
+
     else:
         boxes, scores, classes = np_outputs[0][0], np_outputs[1][0], np_outputs[2][0]
+
         if bbox_normalization:
             boxes = boxes / input_h
+
         if bbox_order == "xy":
             boxes = boxes[:, [1, 0, 3, 2]]
-        boxes = np.array_split(boxes, 4, axis=1)
+
+        boxes = numpy.array_split(boxes, 4, axis=1)
         boxes = zip(*boxes)
 
     last_detections = [
@@ -251,4 +266,3 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("Stopped by user.")
         picam2.stop()
-
