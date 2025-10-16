@@ -28,66 +28,85 @@ servo_position = 0.0 # Creates a variable for the servo position and initializes
 servo.value = servo_position # Sets the position to "servo_position"
 
 class Detection:
+
     """
     Represents a single object detection.
+
     """
 
-    def __init__(self, coords, category, conf, metadata):
-        """Creates a Detection object recording the bounding box, category and confidence."""
+    def __init__(self, coords, category, confidence, metadata):
+
+        """
+        Creates a detection object recording the bounding box, the category and the confidence.
+
+        Arguments:
+            "coords": The bounding box coordinates (x, y, w, h) as floats in the range [0.0, 1.0]
+            "category": The category index as an integer
+            "confidence": The confidence score as a float in the range [0.0, 1.0]
+            "metadata": The metadata dictionary from the camera
+
+        Returns:
+            None
+
+        """
+
         self.category = category
-        self.conf = conf
+        self.confidence = confidence
         self.box = imx500.convert_inference_coords(coords, metadata, picam2)
 
 
-def parse_detections(metadata: dict):
+def parse_detections(metadata):
 
     """
-    Parse the output tensor into detected objects.
+    Parses the output tensor into a number of detected objects, scaled to the ISP output.
 
     Arguments:
-
-    Returns:
-        "last_detections":
+        "metadata": The metadata dictionary from the camera"
     
+    Returns:
+        "last_detections": A list of detection objects
+
     """
+
     global last_detections
 
-    bbox_normalization = intrinsics.bbox_normalization
-    bbox_order = intrinsics.bbox_order
+    bounding_box_normalization = intrinsics.bbox_normalization # Boolean indicating if bounding boxes are normalized
+    bounding_box_order = intrinsics.bbox_order # String indicating the order of bounding box coordinates ("yx" or "xy")
 
-    threshold = args.threshold
-    iou = args.iou
-    max_detections = args.max_detections
+    threshold = args.threshold # Float confidence threshold for filtering detections
+    iou = args.iou # Float IoU threshold for non-maximum suppression
+    max_detections = args.max_detections # Integer maximum number of detections to return
 
-    np_outputs = imx500.get_outputs(metadata, add_batch=True)
-    input_w, input_h = imx500.get_input_size()
+    numpy_outputs = imx500.get_outputs(metadata, add_batch = True) # Gets the output tensors from the metadata as a list of NumPy arrays
+    input_width, input_height = imx500.get_input_size # Gets the input size of the model
 
-    if np_outputs is None:
-        return last_detections
+    if numpy_outputs is None: # If no outputs are available:
+        return last_detections # Return the last detections
 
-    if intrinsics.postprocess == "nanodet":
-        boxes, scores, classes = postprocess_nanodet_detection(
-            outputs=np_outputs[0], conf=threshold, iou_thres=iou, max_out_dets=max_detections
-        )[0]
-        boxes = scale_boxes(boxes, 1, 1, input_h, input_w, False, False)
+    if intrinsics.postprocess == "nanodet": # If the postprocessing method is "nanodet":
+        boxes, confidence_scores, classes = postprocess_nanodet_detection(outputs = numpy_outputs[0], confidence = threshold, iou_thres = iou, max_out_dets = max_detections)[0] # Postprocess the outputs using the nanodet method
 
-    else:
-        boxes, scores, classes = np_outputs[0][0], np_outputs[1][0], np_outputs[2][0]
+        boxes = scale_boxes(boxes, 1, 1, input_height, input_width, False, False) # Scale the bounding boxes to the input size
 
-        if bbox_normalization:
-            boxes = boxes / input_h
+    else: # For other models (e.g., SSD MobileNet):
 
-        if bbox_order == "xy":
-            boxes = boxes[:, [1, 0, 3, 2]]
+        boxes, confidence_scores, classes = numpy_outputs[0][0], numpy_outputs[1][0], numpy_outputs[2][0] # Extract boxes, confidence scores, and classes from the outputs
 
-        boxes = numpy.array_split(boxes, 4, axis=1)
-        boxes = zip(*boxes)
+        if bounding_box_normalization: # If bounding boxes are normalized:
+            boxes = boxes / input_height # Normalize boxes by input height
 
-    last_detections = [
-        Detection(box, category, score, metadata)
-        for box, score, category in zip(boxes, scores, classes)
-        if score > threshold
-    ]
+        if bounding_box_order == "xy": # If bounding box order is "xy":
+            boxes = boxes[:, [1, 0, 3, 2]] # Reorder boxes to "yx" format
+
+        boxes = numpy.array_split(boxes, 4, axis = 1) # Split boxes into separate arrays for y0, x0, y1, x1
+        boxes = zip(*boxes) # Unzip the boxes into individual components
+
+    last_detections = []
+
+    for box, confidence_score, category in zip(boxes, confidence_scores, classes): # For every box, score and category:
+        if confidence_score > threshold: # If the score is larger than the threshold:
+            detection = Detection(box, category, confidence_score, metadata) # Create a detection object
+            last_detections.append(detection) # Add it to "last_detections"
 
     return last_detections
 
@@ -112,7 +131,7 @@ def draw_detections(request, stream="main"):
     with MappedArray(request, stream) as m:
         for detection in detections:
             x, y, w, h = detection.box
-            label = f"{labels[int(detection.category)]} ({detection.conf:.2f})"
+            label = f"{labels[int(detection.category)]} ({detection.confidence:.2f})"
             (text_width, text_height), baseline = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
             text_x = x + 5
             text_y = y + 15
@@ -136,8 +155,8 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", type=str, default="/usr/share/imx500-models/imx500_network_ssd_mobilenetv2_fpnlite_320x320_pp.rpk")
     parser.add_argument("--fps", type=int)
-    parser.add_argument("--bbox-normalization", action=argparse.BooleanOptionalAction)
-    parser.add_argument("--bbox-order", choices=["yx", "xy"], default="yx")
+    parser.add_argument("--bounding-box-normalization", action=argparse.BooleanOptionalAction)
+    parser.add_argument("--bounding-box-order", choices=["yx", "xy"], default="yx")
     parser.add_argument("--threshold", type=float, default=0.55)
     parser.add_argument("--iou", type=float, default=0.65)
     parser.add_argument("--max-detections", type=int, default=10)
