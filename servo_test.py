@@ -254,7 +254,7 @@ if __name__ == "__main__":
     # --- Servo: gpiozero setup ---
     # ---------------------------
     # Hardware pin (BCM); change if you wire differently
-    SERVO_GPIO_PIN = 17
+    SERVO_GPIO_PIN = 18
 
     # AngularServo pulse range may need tuning for your servo:
     SERVO_MIN_PULSE = 0.0006   # 600 us
