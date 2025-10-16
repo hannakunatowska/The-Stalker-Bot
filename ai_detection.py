@@ -24,6 +24,9 @@ last_detections = []
 
 ignore_dash_labels = False
 
+bounding_box_opacity = 0.7
+bounding_box_thickness = 2
+
 # --- Servo setup ---
 
 servo = Servo(18, min_pulse_width = servo_minimum_pulse_width, max_pulse_width = servo_maximum_pulse_width) # Creates a servo object on GPIO pin 18 with specified pulse widths
@@ -162,45 +165,72 @@ def draw_detections(request, stream = "main"):
     if detections is None:
         return
 
-    labels = get_labels()
+    labels = get_labels() # Get the labels for the model
 
-    with MappedArray(request, stream) as m:
-        for detection in detections:
-            x, y, w, h = detection.box
-            label = f"{labels[int(detection.category)]} ({detection.confidence:.2f})"
-            (text_width, text_height), baseline = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
-            text_x = x + 5
-            text_y = y + 15
-            overlay = m.array.copy()
-            cv2.rectangle(overlay, (text_x, text_y - text_height),
-                          (text_x + text_width, text_y + baseline), (255, 255, 255), cv2.FILLED)
-            alpha = 0.30
-            cv2.addWeighted(overlay, alpha, m.array, 1 - alpha, 0, m.array)
-            cv2.putText(m.array, label, (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
-            cv2.rectangle(m.array, (x, y), (x + w, y + h), (0, 255, 0, 0), thickness=2)
+    with MappedArray(request, stream) as mapped: # Map the array for the specified stream
+        
+        for detection in detections: # For each detection:
 
-        if intrinsics.preserve_aspect_ratio:
-            b_x, b_y, b_w, b_h = imx500.get_roi_scaled(request)
-            color = (255, 0, 0)
-            cv2.putText(m.array, "ROI", (b_x + 5, b_y + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
-            cv2.rectangle(m.array, (b_x, b_y), (b_x + b_w, b_y + b_h), (255, 0, 0, 0))
+            x, y, width, height = detection.box # Get the bounding box coordinates
 
+            label = f"{labels[int(detection.category)]} ({detection.confidence:.2f})" # Create the label text with category and confidence
+
+            (text_width, text_height), baseline = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1) # Get the size of the text
+            text_x = x + 5 # Offset text x-position slightly from the bounding box
+            text_y = y + 15 # Offset text y-position slightly from the bounding box
+
+            overlay = mapped.array.copy() # Create a copy of the image array for overlay
+            cv2.rectangle(overlay, (text_x, text_y - text_height), (text_x + text_width, text_y + baseline), (255, 255, 255), cv2.FILLED) # Draw a filled rectangle for the text background
+
+            cv2.addWeighted(overlay, 1 - bounding_box_opacity, mapped.array, bounding_box_opacity, 0, mapped.array) # Blend the overlay with the original image
+            cv2.putText(mapped.array, label, (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1) # Draw the label text on the image
+            cv2.rectangle(mapped.array, (x, y), (x + width, y + height), (0, 255, 0, 0), thickness = bounding_box_thickness) # Draw the bounding box around the detected object
+
+        if intrinsics.preserve_aspect_ratio: # If aspect ratio preservation is enabled:
+            box_x, box_y, box_width, box_height = imx500.get_roi_scaled(request) # Get the scaled ROI (Region Of Interest) rectangle from "get_roi_scaled"
+            color = (255, 0, 0) # Set its color
+            cv2.putText(mapped.array, "ROI", (box_x + 5, box_y + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1) # Label it
+            cv2.rectangle(mapped.array, (box_x, box_y), (box_x + box_width, box_y + box_height), (255, 0, 0, 0)) # Draw it
 
 def get_args():
-    """Gets command line arguments for the script."""
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--model", type=str, default="/usr/share/imx500-models/imx500_network_ssd_mobilenetv2_fpnlite_320x320_pp.rpk")
-    parser.add_argument("--fps", type=int)
-    parser.add_argument("--bounding-box-normalization", action=argparse.BooleanOptionalAction)
-    parser.add_argument("--bounding-box-order", choices=["yx", "xy"], default="yx")
-    parser.add_argument("--threshold", type=float, default=0.55)
-    parser.add_argument("--iou", type=float, default=0.65)
-    parser.add_argument("--max-detections", type=int, default=10)
-    parser.add_argument("--ignore-dash-labels", action=argparse.BooleanOptionalAction)
-    parser.add_argument("--postprocess", choices=["", "nanodet"], default=None)
-    parser.add_argument("-r", "--preserve-aspect-ratio", action=argparse.BooleanOptionalAction)
-    parser.add_argument("--labels", type=str)
-    parser.add_argument("--print-intrinsics", action="store_true")
+
+    """
+    Gets command line arguments for the script.
+
+    Arguments:
+        None
+
+    Returns:
+        "args": The parsed command line arguments
+
+    """
+
+    parser = argparse.ArgumentParser() # Creates an ArgumentParser object for parsing command-line arguments
+
+    parser.add_argument("--model", type = str, help = "Path of the model", default = "/usr/share/imx500-models/imx500_network_ssd_mobilenetv2_fpnlite_320x320_pp.rpk") # Adds a command-line argument for the model path with a default value
+
+    parser.add_argument("--fps", type = int, help = "Frames per second") # Adds a command-line argument for frames per second
+
+    parser.add_argument("--bounding-box-normalization", action = argparse.BooleanOptionalAction, help = "Normalize bbox") # Adds a command-line argument for bbox normalization
+
+    parser.add_argument("--bounding-box-order", choices = ["yx", "xy"], default = "yx", help = "Set bbox order yx -> (y0, x0, y1, x1) xy -> (x0, y0, x1, y1)") # Adds a command-line argument for bbox order
+
+    parser.add_argument("--threshold", type = float, default = 0.55, help = "Detection threshold") # Adds a command-line argument for detection threshold
+
+    parser.add_argument("--iou", type = float, default = 0.65, help = "Set iou threshold") # Adds a command-line argument for iou threshold
+
+    parser.add_argument("--max-detections", type = int, default = 10, help = "Set max detections") # Adds a command-line argument for max detections
+
+    parser.add_argument("--ignore-dash-labels", action = argparse.BooleanOptionalAction, help = "Remove '-' labels ") # Adds a command-line argument for ignoring dash labels
+
+    parser.add_argument("--postprocess", choices = ["", "nanodet"], default = None, help = "Run post process of type") # Adds a command-line argument for post-processing type
+
+    parser.add_argument("-r", "--preserve-aspect-ratio", action = argparse.BooleanOptionalAction, help = "preserve the pixel aspect ratio of the input tensor") # Adds a command-line argument for preserving aspect ratio
+
+    parser.add_argument("--labels", type = str, help = "Path to the labels file") # Adds a command-line argument for labels file path
+
+    parser.add_argument("--print-intrinsics", action = "store_true", help = "Print JSON network_intrinsics then exit") # Adds a command-line argument for printing intrinsics
+
     return parser.parse_args()
 
 
