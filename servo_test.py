@@ -122,6 +122,9 @@ def parse_detections(metadata):
 
     return last_detections
 
+# small helper: clamp v into [a, b]
+def _clamp(v, a, b):
+    return a if v < a else (b if v > b else v)
 
 @lru_cache # Caches the results of the function below (to avoid redundant computations)
 def get_labels():
