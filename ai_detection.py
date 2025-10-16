@@ -14,6 +14,8 @@ from picamera2.devices.imx500 import NetworkIntrinsics, postprocess_nanodet_dete
 from picamera2.devices.imx500.postprocess import scale_boxes
 from gpiozero import Servo
 
+from libcamera import Transform
+
 # --- Definitions ---
 
 last_detections = []
@@ -221,10 +223,11 @@ if not intrinsics.task:
     intrinsics.task = "object detection"
 
 picam2 = Picamera2(imx500.camera_num)
-config = picam2.create_preview_configuration(controls={"FrameRate": intrinsics.inference_rate}, buffer_count=12)
-
-picam2.controls["FlipHorizontal"] = True
-picam2.controls["FlipVertical"] = True
+config = picam2.create_preview_configuration(
+    controls={"FrameRate": intrinsics.inference_rate},
+    buffer_count=12,
+    transform=libcamera.Transform(hflip=True, vflip=True)
+)
 
 picam2.pre_callback = draw_detections
 picam2.start(config, show_preview=True)
