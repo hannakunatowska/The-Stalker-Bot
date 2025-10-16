@@ -223,7 +223,8 @@ if not intrinsics.task:
 picam2 = Picamera2(imx500.camera_num)
 config = picam2.create_preview_configuration(controls={"FrameRate": intrinsics.inference_rate}, buffer_count=12)
 
-picam2.rotation = 180
+picam2.controls["FlipHorizontal"] = True
+picam2.controls["FlipVertical"] = True
 
 picam2.pre_callback = draw_detections
 picam2.start(config, show_preview=True)
