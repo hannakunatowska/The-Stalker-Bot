@@ -185,4 +185,9 @@ def follow():
 # --- Execution ---
 
 if __name__ == "__main__":
-    follow()
+
+    try:
+        follow()
+
+    except KeyboardInterrupt:
+        stop()

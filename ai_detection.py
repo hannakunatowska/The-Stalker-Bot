@@ -15,7 +15,21 @@ from picamera2.devices import IMX500 # Imports the IMX500 device class, represen
 from picamera2.devices.imx500 import NetworkIntrinsics, postprocess_nanodet_detection # Imports NetworkIntrinsics for neural network metadata and postprocess_nanodet_detection for object detection result processing
 from picamera2.devices.imx500.postprocess import scale_boxes # Imports the scale_boxes function for adjusting bounding box coordinates to match image dimensions
 
-# --- Definitions ---
+# --- General definitions ---
+
+main_loop_update_speed = 0.05
+
+camera_frame_width, camera_frame_height = picam2.stream_configuration("main")["size"]
+obstacle_area_threshold = 10000 # Sets the obstacle area threshold to 10 000 pixels
+
+last_detections = []
+
+ignore_dash_labels = False
+
+bounding_box_opacity = 0.7
+bounding_box_thickness = 2
+
+# --- Servo definitions ---
 
 servo_maximum_position = 1
 servo_minimum_position = -1
@@ -24,14 +38,8 @@ servo_maximum_pulse_width = 2.5 / 1000
 servo_step = 0.04
 servo_threshold = 0.07
 servo_change_threshold = 0.005
-servo_smooth_speed = 0.01
-
-last_detections = []
-
-ignore_dash_labels = False
-
-bounding_box_opacity = 0.7
-bounding_box_thickness = 2
+servo_smooth_speed = 0.005
+servo_step_delay = 0.005
 
 # --- Servo setup ---
 
@@ -85,9 +93,9 @@ def parse_detections(metadata):
     bounding_box_normalization = intrinsics.bbox_normalization # Boolean indicating if bounding boxes are normalized
     bounding_box_order = intrinsics.bbox_order # String indicating the order of bounding box coordinates ("yx" or "xy")
 
-    confidence_threshold = args.threshold # Float confidence threshold for filtering detections
-    iou = args.iou # Float IoU threshold for non-maximum suppression
-    max_detections = args.max_detections # Integer maximum number of detections to return
+    confidence_threshold = arguments.threshold # Float confidence threshold for filtering detections
+    iou = arguments.iou # Float IoU threshold for non-maximum suppression
+    max_detections = arguments.max_detections # Integer maximum number of detections to return
 
     numpy_outputs = imx500.get_outputs(metadata, add_batch = True) # Gets the output tensors from the metadata as a list of NumPy arrays
     input_width, input_height = imx500.get_input_size() # Gets the input size of the model
@@ -198,7 +206,7 @@ def draw_detections(request, stream = "main"):
             cv2.putText(mapped.array, "ROI", (box_x + 5, box_y + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1) # Label it
             cv2.rectangle(mapped.array, (box_x, box_y), (box_x + box_width, box_y + box_height), (255, 0, 0, 0)) # Draw it
 
-def get_args():
+def get_arguments():
 
     """
     Gets command line arguments for the script.
@@ -207,7 +215,7 @@ def get_args():
         None
 
     Returns:
-        "args": The parsed command line arguments
+        "arguments": The parsed command line arguments
 
     """
 
@@ -237,7 +245,7 @@ def get_args():
 
     parser.add_argument("--print-intrinsics", action = "store_true", help = "Print JSON network_intrinsics then exit") # Adds a command-line argument for printing intrinsics
 
-    return parser.parse_args()
+    return parser.parse_arguments()
 
 def update_servo_tracking(x_center_normalized):
 
@@ -294,7 +302,7 @@ def update_servo_tracking(x_center_normalized):
         for _ in range(servo_steps):
             servo_position += direction_sign * servo_smooth_speed
             servo.value = servo_position
-            time.sleep(0.01)
+            time.sleep(servo_step_delay)
 
     angle = (servo_position + 1) * 90
 
@@ -302,81 +310,98 @@ def update_servo_tracking(x_center_normalized):
 
     return angle, direction
 
-
 def get_tracking_data():
-    """
-    Captures detections, tracks the person, checks for obstacles,
-    and returns (angle, direction, obstacle, person_height_normalized)
-    """
-    last_results = parse_detections(picam2.capture_metadata())
 
-    # --- Find person ---
-    person_detections = [d for d in last_results if intrinsics.labels[int(d.category)] == "person"]
-    person_height_norm = None
+    """
+    Captures detections, tracks the person and checks for obstacles.
+
+    Arguments:
+        None
+    
+    Returns:
+        "angle":
+        "direction":
+        "obstacle":
+        "person_height_normalized":
+
+    """
+
+    last_results = parse_detections(picam2.capture_metadata()) # Gets the latest results by calling "parse_detections"
+
+    person_detections = []
+
+    for detection in last_results:
+        if intrinsics.labels[int(detection.category)] == "person":
+            person_detections.append(detection) # Collect each person detection in a list
+
+    person_height_normalized = None
     angle, direction = 90, "none"
 
-    if person_detections:
-        person = person_detections[0]
-        x, y, w, h = person.box
-        x_center = x + w / 2
-        frame_width, frame_height = picam2.stream_configuration("main")["size"]
-        x_center_normalized = x_center / frame_width
-        person_height_norm = h / frame_height  # <--- NEW: normalized height
-        angle, direction = update_servo_tracking(x_center_normalized)
-    else:
+    if person_detections: # If there are any person detections:
+        person = person_detections[0] # Select the first one
+        x, _, width, height = person.box # Extract its bounding box data
+        x_center = x + width / 2 # Find the horizontal center of the detected person (in pixels)
+        x_center_normalized = x_center / camera_frame_width # Converts pixel position into normalized value between 0 and 1
+        angle, direction = update_servo_tracking(x_center_normalized) # Updates the servo position by calling "update_servo_tracking" with the normalized x-position
+        person_height_normalized = height / camera_frame_height # Calculates the person height relative to the camera frame height
+
+    else: # Else (if there arent any person detections):
         print("No person detected.")
 
-    # --- Detect obstacles ---
-    obstacle_labels = {
-        "chair", "couch", "bed", "bench", "table", "tv", "potted plant",
-        "car", "truck", "bottle", "vase", "wall", "refrigerator", "microwave"
-    }
+    obstacle_labels = {"chair", "couch", "bed", "bench", "table", "tv", "potted plant","car", "truck", "bottle", "vase", "wall", "refrigerator", "microwave"}
     obstacle_detected = False
-    for obs in last_results:
-        if intrinsics.labels[int(obs.category)] in obstacle_labels:
-            x, y, w, h = obs.box
-            if w * h > 10000:
-                label = intrinsics.labels[int(obs.category)]
+
+    for obstacle in last_results:
+
+        if intrinsics.labels[int(obstacle.category)] in obstacle_labels:
+            x, _, width, height = obstacle.box
+
+            if width * height > obstacle_area_threshold: # If the obstacle box area is larger than the threshold
+                label = intrinsics.labels[int(obstacle.category)]
                 print(f"Obstacle detected: {label}")
                 obstacle_detected = True
                 break
 
-    return angle, direction, obstacle_detected, person_height_norm
+    return angle, direction, obstacle_detected, person_height_normalized
 
+# --- Camera setup ---
 
-# --- Camera Initialization (as before) ---
-args = get_args()
-imx500 = IMX500(args.model)
-intrinsics = imx500.network_intrinsics or NetworkIntrinsics()
+arguments = get_arguments()
+imx500 = IMX500(arguments.model) # Loads the IMX500 camera device and its neural network model file
+intrinsics = imx500.network_intrinsics or NetworkIntrinsics() # Retrieves the model’s metadata, and if unavailable, creates a default "NetworkIntrinsics" instance
 
-if not intrinsics.task:
-    intrinsics.task = "object detection"
+if not intrinsics.task: # If the task type isn't defined in the model metadata:
+    intrinsics.task = "object detection" # Set the task type to "object detection"
 
-picam2 = Picamera2(imx500.camera_num)
-config = picam2.create_preview_configuration(
-    controls={"FrameRate": intrinsics.inference_rate},
-    buffer_count=12,
-    transform=libcamera.Transform(hflip=True, vflip=True)
+picam2 = Picamera2(imx500.camera_num) # Creates a control object for the physical camera
+
+config = picam2.create_preview_configuration( # Creates a preview configuration with:
+    controls = {"FrameRate": intrinsics.inference_rate}, # Frame rate from model intrinsics
+    buffer_count = 12, # 12 frame buffers (which improves the capture pipeline)
+    transform = libcamera.Transform(hflip = True, vflip = True) # Horizontal and vertical flipping
 )
 
-picam2.pre_callback = draw_detections
-picam2.start(config, show_preview=True)
+picam2.pre_callback = draw_detections # Before each frame is displayed, "draw_detections" is called to overlay bounding boxes and labels
+picam2.start(config, show_preview = True) # Starts the video streaming in a live preview window
 
 if intrinsics.preserve_aspect_ratio:
     imx500.set_auto_aspect_ratio()
 
 if __name__ == "__main__":
-    print("Starting standalone camera-servo tracking test...")
+
+    print("Starting camera-servo tracking test...")
+
     try:
         while True:
             angle, direction, obstacle, person_height = get_tracking_data()
 
             if person_height:
-                print(f"→ Person height (normalized): {person_height:.2f}")
+                print(f"Person height (normalized): {person_height:.2f}")
+
             if obstacle:
-                print("⚠️ Obstacle detected!")
+                print("Obstacle detected!")
             
-            time.sleep(0.2)
+            time.sleep(main_loop_update_speed)
 
     except KeyboardInterrupt:
         print("Stopped by user.")
