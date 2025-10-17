@@ -17,8 +17,14 @@ from picamera2.devices.imx500.postprocess import scale_boxes # Imports the scale
 
 # --- Definitions ---
 
+servo_maximum_position = 1
+servo_minimum_position = -1
 servo_minimum_pulse_width = 0.5 / 1000
 servo_maximum_pulse_width = 2.5 / 1000
+servo_step = 0.04
+servo_threshold = 0.07
+servo_change_threshold = 0.005
+servo_smooth_speed = 0.01
 
 last_detections = []
 
@@ -233,43 +239,67 @@ def get_args():
 
     return parser.parse_args()
 
-
 def update_servo_tracking(x_center_normalized):
-    """Updates servo tracking and returns servo angle + direction string."""
+
+    """
+    Updates the servo tracking position based on the normalized x center position.
+
+    Arguments:
+        x_center_normalized (float): The normalized x center position of the detected object.
+
+    Returns:
+        "angle": The calculated servo angle position.
+
+    """
+
     global servo_position
 
-    threshold = 0.07
-    step = 0.05
-    change_threshold = 0.01
-    max_pos = 1.0
-    min_pos = -1.0
     direction = None
 
-    new_pos = servo_position
+    target_position = servo_position
 
-    if x_center_normalized > 0.5 + threshold:
-        if servo_position > min_pos:
-            new_pos = servo_position - step
+    if x_center_normalized > 0.5 + servo_threshold:
+
+        if servo_position > servo_minimum_position:
+            target_position = servo_position - servo_step
             direction = "left"
+
         else:
             direction = "limit reached (left)"
-    elif x_center_normalized < 0.5 - threshold:
-        if servo_position < max_pos:
-            new_pos = servo_position + step
+
+    elif x_center_normalized < 0.5 - servo_threshold:
+
+        if servo_position < servo_maximum_position:
+            target_position = servo_position + servo_step
             direction = "right"
+
         else:
             direction = "limit reached (right)"
-    else:
-        new_pos = 0
-        direction = "centered"
 
-    new_pos = max(min_pos, min(max_pos, new_pos))
-    if abs(new_pos - servo_position) >= change_threshold:
-        servo_position = new_pos
-        servo.value = servo_position
+    else: # Else (if the person is roughly in the middle):
+        direction = "centered" # Set direction to "centered"
+
+    target_position = max(servo_minimum_position, min(servo_maximum_position, target_position))
+
+    if abs(target_position - servo_position) >= servo_change_threshold:
+
+        servo_steps = int(abs(target_position - servo_position) / servo_smooth_speed)
+
+        if target_position > servo_position:
+            direction_sign = 1
+
+        else:
+            direction_sign = -1
+
+        for _ in range(servo_steps):
+            servo_position += direction_sign * servo_smooth_speed
+            servo.value = servo_position
+            time.sleep(0.01)
 
     angle = (servo_position + 1) * 90
+
     print(f"Person x: {x_center_normalized:.2f} | Servo pos: {servo_position:.2f} | Angle: {angle:.1f}° | Direction: {direction}")
+
     return angle, direction
 
 
