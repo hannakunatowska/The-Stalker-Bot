@@ -2,7 +2,6 @@
 # --- Imports ---
 
 import lgpio
-import time
 
 # --- Definitions ---
 
@@ -22,7 +21,8 @@ for button_pin in button_pins:
 
 # --- Functions ---
 
-def press(button_pin, press_duration = 0.1):
+def press(button_pin):
     lgpio.gpio_claim_output(handle, button_pin, 1) # Drive the pin HIGH
-    time.sleep(press_duration) # Wait
-    lgpio.gpio_claim_input(handle, button_pin) # Set the pin to input again (high impedance)
+
+def unpress(button_pin):
+    lgpio.gpio_claim_input(handle, button_pin) # Set the pin to input (high impedance)
