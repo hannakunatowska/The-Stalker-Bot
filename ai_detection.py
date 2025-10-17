@@ -24,7 +24,7 @@ servo_maximum_pulse_width = 2.5 / 1000
 servo_step = 0.04
 servo_threshold = 0.07
 servo_change_threshold = 0.005
-servo_smooth_speed = 0.01
+servo_smooth_speed = 0.005
 
 last_detections = []
 
@@ -294,7 +294,7 @@ def update_servo_tracking(x_center_normalized):
         for _ in range(servo_steps):
             servo_position += direction_sign * servo_smooth_speed
             servo.value = servo_position
-            time.sleep(0.01)
+            time.sleep(0.005)
 
     angle = (servo_position + 1) * 90
 
@@ -376,7 +376,7 @@ if __name__ == "__main__":
             if obstacle:
                 print("⚠️ Obstacle detected!")
             
-            time.sleep(0.2)
+            time.sleep(0.05)
 
     except KeyboardInterrupt:
         print("Stopped by user.")
