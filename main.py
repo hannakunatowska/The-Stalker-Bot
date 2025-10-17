@@ -165,11 +165,11 @@ def follow():
 
         elif direction in ("limit reached (left)", "limit reached (right)"):
             
-             if angle < 90:
-                    turn("left", angle)
+            if angle < 90:
+                turn("left", angle)
                 
-                else:
-                    turn("right", angle)
+            else:
+                turn("right", angle)
 
         time.sleep(follow_loop_update_time)
 
