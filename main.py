@@ -3,7 +3,7 @@
 
 import time
 import ai_detection
-from remote_controller import press
+from remote_controller import press, unpress, button_pins
 from ultrasonic_sensor import get_distance
 
 # --- Definitions ---
@@ -17,23 +17,26 @@ follow_loop_update_time = 0.1
 
 # --- Helper functions ---
 
-def move_forward(press_duration = 0.3):
+def move_forward(press_duration = 0.2):
 
     """
     Moves the car forward.
 
     Arguments:
-        "press_duration": The duration of the simulated button press (default set to 0.3 s).
+        "press_duration": The duration of the simulated button press.
 
     Returns:
         None
 
     """
 
-    press(22, press_duration)
+    press(22)
+    time.sleep(press_duration)
+    unpress(22)
+
     print(f"\nMoved forward for {press_duration} s")
 
-def move_backwards(press_duration = 0.3):
+def move_backwards(press_duration = 0.2):
     
     """
     Moves the car backwards.
@@ -46,7 +49,10 @@ def move_backwards(press_duration = 0.3):
         
     """
 
-    press(25, press_duration)
+    press(25)
+    time.sleep(press_duration)
+    unpress(25)
+
     print(f"\nMoved backwards for {press_duration} s")
 
 def stop():
@@ -62,7 +68,8 @@ def stop():
 
     """
 
-    time.sleep(0.2)
+    for button_pin in button_pins:
+        unpress(button_pin)
 
 def turn(direction, angle):
 
@@ -81,13 +88,15 @@ def turn(direction, angle):
     turn_time = abs(angle - 90) * turn_time_per_degree # Sets the turning time by multiplying the angle by "turn_time_per_degree"
 
     if direction == "right":
-        press(17, turn_time)
-
+        press(17)
+        move_forward(turn_time)
+        unpress(17)
+        
     if direction == "left":
-        press(27, turn_time)
-    
-    move_forward(turn_time)
-    
+        press(27)
+        move_forward(turn_time)
+        unpress(27)
+        
     print(f"\nTurned {direction} for {turn_time:.2f}s (angle was {angle:.1f})")
 
 def avoid_obstacle():
@@ -103,7 +112,7 @@ def avoid_obstacle():
     
     """
 
-    print("\nObstacle detected, stopping...")
+    print("\nStopping...")
     stop()
 
 # --- Main program loop ---
