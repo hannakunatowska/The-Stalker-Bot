@@ -164,6 +164,7 @@ def follow():
                 print("\nCentered and aligned.")
 
         elif direction in ("limit reached (left)", "limit reached (right)"):
+            
              if angle < 90:
                     turn("left", angle)
                 
