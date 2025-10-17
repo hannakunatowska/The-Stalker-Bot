@@ -209,8 +209,8 @@ def update_servo_tracking(x_center_normalized):
     global servo_position
 
     threshold = 0.07          # Dead zone around the center
-    step = 0.05               # Target adjustment step (how far to move target per detection)
-    smooth_speed = 0.01       # How small each servo movement increment is
+    step = 0.02            # Target adjustment step (how far to move target per detection)
+    smooth_speed = 0.005      # How small each servo movement increment is
     change_threshold = 0.005  # Minimum change before we move
     max_pos = 1.0
     min_pos = -1.0
@@ -243,7 +243,7 @@ def update_servo_tracking(x_center_normalized):
         for _ in range(steps):
             servo_position += direction_sign * smooth_speed
             servo.value = servo_position
-            time.sleep(0.01)  # smaller = smoother (but more CPU usage)
+            time.sleep(0.005)  # smaller = smoother (but more CPU usage)
 
     angle = (servo_position + 1) * 90
     print(f"Person x: {x_center_normalized:.2f} | Servo pos: {servo_position:.2f} | Angle: {angle:.1f}° | Direction: {direction}")
