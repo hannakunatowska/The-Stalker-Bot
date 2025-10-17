@@ -163,7 +163,7 @@ def follow():
             else:
                 print("\nCentered and aligned.")
 
-        elif direction in ("left", "right"):
+        elif direction in ("limit reached (left)", "limit reached (right)"):
             turn(direction, angle)
 
         time.sleep(follow_loop_update_time)
