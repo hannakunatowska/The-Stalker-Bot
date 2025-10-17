@@ -155,10 +155,10 @@ def follow():
             if abs(angle - 90) > max_angle_offset:
 
                 if angle < 90:
-                    turn("left", angle)
+                    turn("right", angle)
                 
                 else:
-                    turn("right", angle)
+                    turn("left", angle)
 
             else:
                 print("\nCentered and aligned.")
@@ -166,10 +166,10 @@ def follow():
         elif direction in ("limit reached (left)", "limit reached (right)"):
             
             if angle < 90:
-                turn("left", angle)
+                turn("right", angle)
                 
             else:
-                turn("right", angle)
+                turn("left", angle)
 
         time.sleep(follow_loop_update_time)
 
