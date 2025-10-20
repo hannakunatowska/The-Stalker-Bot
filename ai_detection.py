@@ -19,7 +19,7 @@ from picamera2.devices.imx500.postprocess import scale_boxes # Imports the scale
 
 main_loop_update_speed = 0.05
 
-obstacle_area_threshold = 20000 # Sets the obstacle area threshold to 10 000 pixels
+obstacle_area_threshold = 10000 # Sets the obstacle area threshold
 
 last_detections = []
 
@@ -352,7 +352,7 @@ def get_tracking_data():
     else: # Else (if there arent any person detections):
         print("No person detected.")
 
-    obstacle_labels = {"chair", "couch", "bed", "bench", "table", "tv", "potted plant","car", "truck", "bottle", "vase", "wall", "refrigerator", "microwave"}
+    obstacle_labels = {"chair", "couch", "bed", "bench", "table", "tv", "potted plant", "bottle", "vase", "wall", "refrigerator", "microwave"}
     obstacle_detected = False
 
     for obstacle in last_results:
@@ -401,9 +401,6 @@ if __name__ == "__main__":
 
             if person_height:
                 print(f"Person height (normalized): {person_height:.2f}")
-
-            if obstacle:
-                print("Obstacle detected!")
             
             time.sleep(main_loop_update_speed)
 
