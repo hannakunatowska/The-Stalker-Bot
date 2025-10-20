@@ -247,66 +247,65 @@ def get_arguments():
     return parser.parse_args()
 
 def update_servo_tracking(x_center_normalized):
-
     """
     Updates the servo tracking position based on the normalized x center position.
-
-    Arguments:
-        x_center_normalized (float): The normalized x center position of the detected object.
-
-    Returns:
-        "angle": The calculated servo angle position.
-
+    Locks the servo (holds the last position) while the person is inside the dead zone.
     """
 
-    global servo_position
+    global servo_position, servo_locked, servo_locked_position
 
     direction = None
-
     target_position = servo_position
 
-    if x_center_normalized > 0.5 + servo_threshold:
+    # thresholds
+    enter_thresh = servo_threshold
+    exit_thresh = servo_threshold + servo_hysteresis
 
-        if servo_position > servo_minimum_position:
-            target_position = servo_position - servo_step
-            direction = "left"
+    # how far off-center the person is
+    offset = x_center_normalized - 0.5
+    abs_off = abs(offset)
 
-        else:
-            direction = "limit reached (left)"
+    # If inside the enter threshold -> lock and hold current servo position
+    if abs_off <= enter_thresh:
+        if not servo_locked:
+            # newly entering the dead zone: lock at the current servo position
+            servo_locked = True
+            servo_locked_position = servo_position
+        target_position = servo_locked_position
+        direction = "centered (locked)"
+    else:
+        # Person outside dead zone -> unlock and adjust target
+        # (we keep the same movement logic you already used)
+        # Note: use enter_thresh here for comparisons; hysteresis affects re-locking only.
+        servo_locked = False
+        if x_center_normalized > 0.5 + enter_thresh:
+            if servo_position > servo_minimum_position:
+                target_position = servo_position - servo_step
+                direction = "left"
+            else:
+                direction = "limit reached (left)"
+        elif x_center_normalized < 0.5 - enter_thresh:
+            if servo_position < servo_maximum_position:
+                target_position = servo_position + servo_step
+                direction = "right"
+            else:
+                direction = "limit reached (right)"
 
-    elif x_center_normalized < 0.5 - servo_threshold:
-
-        if servo_position < servo_maximum_position:
-            target_position = servo_position + servo_step
-            direction = "right"
-
-        else:
-            direction = "limit reached (right)"
-
-    else: # Else (if the person is roughly in the middle):
-        direction = "centered" # Set direction to "centered"
-
+    # clamp target position to safe bounds
     target_position = max(servo_minimum_position, min(servo_maximum_position, target_position))
 
+    # move toward target if difference is meaningful
     if abs(target_position - servo_position) >= servo_change_threshold:
-
-        servo_steps = int(abs(target_position - servo_position) / servo_smooth_speed)
-
-        if target_position > servo_position:
-            direction_sign = 1
-
-        else:
-            direction_sign = -1
-
+        # ensure at least one step
+        servo_steps = max(1, int(abs(target_position - servo_position) / servo_smooth_speed))
+        direction_sign = 1 if target_position > servo_position else -1
         for _ in range(servo_steps):
             servo_position += direction_sign * servo_smooth_speed
             servo.value = servo_position
             time.sleep(servo_step_delay)
 
     angle = (servo_position + 1) * 90
-
-    print(f"Person x: {x_center_normalized:.2f} | Servo pos: {servo_position:.2f} | Angle: {angle:.1f}° | Direction: {direction}")
-
+    print(f"Person x: {x_center_normalized:.2f} | Servo pos: {servo_position:.3f} | Angle: {angle:.1f}° | Dir: {direction}")
     return angle, direction
 
 def get_tracking_data():
