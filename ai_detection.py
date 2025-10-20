@@ -38,6 +38,7 @@ servo_step = 0.04
 servo_deadband = 0.1
 servo_smooth_speed = 0.005
 servo_step_delay = 0.005
+servo_change_threshold = 0.001
 
 ema_smoothed_x_position = 0.5 # Initializes to the center
 ema_alpha = 0.4
@@ -300,9 +301,10 @@ def update_servo_tracking(x_center_normalized):
     servo_steps = max(1, int(abs(target_position - servo_position) / servo_smooth_speed)) # Calculates the amount of steps needed for a smooth transition
 
     for _ in range(servo_steps): # Moves the servo gradually
-        servo_position += servo_direction_sign * servo_smooth_speed
-        servo_position = max(servo_minimum_position, min(servo_maximum_position, servo_position))
-        servo.value = servo_position
+        if abs(servo_direction_sign * servo_smooth_speed) > servo_change_threshold:
+            servo_position += servo_direction_sign * servo_smooth_speed
+            servo_position = max(servo_minimum_position, min(servo_maximum_position, servo_position))
+            servo.value = servo_position
         time.sleep(servo_step_delay)
 
     angle = (servo_position + 1) * 90 # Recomputes the current servo angle
