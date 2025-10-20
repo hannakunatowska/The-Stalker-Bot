@@ -35,10 +35,12 @@ servo_minimum_position = -1
 servo_minimum_pulse_width = 0.5 / 1000
 servo_maximum_pulse_width = 2.5 / 1000
 servo_step = 0.04
-servo_threshold = 0.07
-servo_change_threshold = 0.005
+servo_deadband = 0.1
 servo_smooth_speed = 0.005
 servo_step_delay = 0.005
+
+ema_smoothed_x_position = 0.5 # Initializes to the center
+ema_alpha = 0.2
 
 # --- Servo setup ---
 
@@ -249,61 +251,61 @@ def get_arguments():
 def update_servo_tracking(x_center_normalized):
 
     """
-    Updates the servo tracking position based on the normalized x center position.
+    Updates the servo tracking position based on the EMA smoothed x-position of the person.
 
     Arguments:
         x_center_normalized (float): The normalized x center position of the detected object.
 
     Returns:
         "angle": The calculated servo angle position.
+        "direction":
 
     """
 
-    global servo_position
+    global servo_position, ema_smoothed_x_position
 
-    direction = None
+    ema_smoothed_x_position = ema_alpha * x_center_normalized + (1.0 - ema_alpha) * ema_smoothed_x_position # Smooths the incoming x-position using the Exponential Moving Average (EMA) formula
+    error = ema_smoothed_x_position - 0.5 # Calculates the error relative to the center
 
-    target_position = servo_position
+    if abs(error) < servo_deadband: # If the error is smaller than the deadband:
+        direction = "centered"
+        angle = (servo_position + 1) * 90
+        print(f"Person x: {x_center_normalized:.2f} | Smoothed x: {ema_smoothed_x_position:.3f} | Servo pos: {servo_position:.2f} | Angle: {angle:.1f}° | Direction: {direction}")
+        return angle, direction # No motion is needed
 
-    if x_center_normalized > 0.5 + servo_threshold:
-
-        if servo_position > servo_minimum_position:
-            target_position = servo_position - servo_step
-            direction = "left"
-
-        else:
-            direction = "limit reached (left)"
-
-    elif x_center_normalized < 0.5 - servo_threshold:
+    if error > 0: # If the smoothed target lies to the right of the center:
 
         if servo_position < servo_maximum_position:
             target_position = servo_position + servo_step
+            servo_direction_sign = 1
             direction = "right"
 
         else:
+            target_position = servo_position
             direction = "limit reached (right)"
 
-    else: # Else (if the person is roughly in the middle):
-        direction = "centered" # Set direction to "centered"
+    else: # Else (if it's to the left):
 
-    target_position = max(servo_minimum_position, min(servo_maximum_position, target_position))
-
-    if abs(target_position - servo_position) >= servo_change_threshold:
-
-        servo_steps = int(abs(target_position - servo_position) / servo_smooth_speed)
-
-        if target_position > servo_position:
-            direction_sign = 1
+        if servo_position > servo_minimum_position:
+            target_position = servo_position - servo_step
+            servo_direction_sign = -1
+            direction = "left"
 
         else:
-            direction_sign = -1
+            target_position = servo_position
+            direction = "limit reached (left)"
 
-        for _ in range(servo_steps):
-            servo_position += direction_sign * servo_smooth_speed
-            servo.value = servo_position
-            time.sleep(servo_step_delay)
+    target_position = max(servo_minimum_position, min(servo_maximum_position, target_position)) # Ensures that the new position stays within a valid range
+    
+    servo_steps = max(1, int(abs(target_position - servo_position) / servo_smooth_speed)) # Calculates the amount of steps needed for a smooth transition
 
-    angle = (servo_position + 1) * 90
+    for _ in range(servo_steps): # Moves the servo gradually
+        servo_position += servo_direction_sign * servo_smooth_speed
+        servo_position = max(servo_minimum_position, min(servo_maximum_position, servo_position))
+        servo.value = servo_position
+        time.sleep(servo_step_delay)
+
+    angle = (servo_position + 1) * 90 # Recomputes the current servo angle
 
     print(f"Person x: {x_center_normalized:.2f} | Servo pos: {servo_position:.2f} | Angle: {angle:.1f}° | Direction: {direction}")
 
