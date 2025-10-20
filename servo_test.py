@@ -15,14 +15,30 @@ from picamera2.devices import IMX500 # Imports the IMX500 device class, represen
 from picamera2.devices.imx500 import NetworkIntrinsics, postprocess_nanodet_detection # Imports NetworkIntrinsics for neural network metadata and postprocess_nanodet_detection for object detection result processing
 from picamera2.devices.imx500.postprocess import scale_boxes # Imports the scale_boxes function for adjusting bounding box coordinates to match image dimensions
 
-# --- Definitions ---
+# --- General definitions ---
 
-servo_minimum_pulse_width = 0.5 / 1000
-servo_maximum_pulse_width = 2.5 / 1000
+main_loop_update_speed = 0.05
+
+obstacle_area_threshold = 10000 # Sets the obstacle area threshold to 10 000 pixels
 
 last_detections = []
 
 ignore_dash_labels = False
+
+bounding_box_opacity = 0.7
+bounding_box_thickness = 2
+
+# --- Servo definitions ---
+
+servo_maximum_position = 1
+servo_minimum_position = -1
+servo_minimum_pulse_width = 0.5 / 1000
+servo_maximum_pulse_width = 2.5 / 1000
+servo_step = 0.04
+servo_threshold = 0.07
+servo_change_threshold = 0.005
+servo_smooth_speed = 0.005
+servo_step_delay = 0.005
 
 # --- Servo setup ---
 
@@ -76,9 +92,9 @@ def parse_detections(metadata):
     bounding_box_normalization = intrinsics.bbox_normalization # Boolean indicating if bounding boxes are normalized
     bounding_box_order = intrinsics.bbox_order # String indicating the order of bounding box coordinates ("yx" or "xy")
 
-    confidence_threshold = args.threshold # Float confidence threshold for filtering detections
-    iou = args.iou # Float IoU threshold for non-maximum suppression
-    max_detections = args.max_detections # Integer maximum number of detections to return
+    confidence_threshold = arguments.threshold # Float confidence threshold for filtering detections
+    iou = arguments.iou # Float IoU threshold for non-maximum suppression
+    max_detections = arguments.max_detections # Integer maximum number of detections to return
 
     numpy_outputs = imx500.get_outputs(metadata, add_batch = True) # Gets the output tensors from the metadata as a list of NumPy arrays
     input_width, input_height = imx500.get_input_size() # Gets the input size of the model
@@ -162,168 +178,230 @@ def draw_detections(request, stream = "main"):
     if detections is None:
         return
 
-    labels = get_labels()
+    labels = get_labels() # Get the labels for the model
 
-    with MappedArray(request, stream) as m:
-        for detection in detections:
-            x, y, w, h = detection.box
-            label = f"{labels[int(detection.category)]} ({detection.confidence:.2f})"
-            (text_width, text_height), baseline = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
-            text_x = x + 5
-            text_y = y + 15
-            overlay = m.array.copy()
-            cv2.rectangle(overlay, (text_x, text_y - text_height),
-                          (text_x + text_width, text_y + baseline), (255, 255, 255), cv2.FILLED)
-            alpha = 0.30
-            cv2.addWeighted(overlay, alpha, m.array, 1 - alpha, 0, m.array)
-            cv2.putText(m.array, label, (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
-            cv2.rectangle(m.array, (x, y), (x + w, y + h), (0, 255, 0, 0), thickness=2)
+    with MappedArray(request, stream) as mapped: # Map the array for the specified stream
+        
+        for detection in detections: # For each detection:
 
-        if intrinsics.preserve_aspect_ratio:
-            b_x, b_y, b_w, b_h = imx500.get_roi_scaled(request)
-            color = (255, 0, 0)
-            cv2.putText(m.array, "ROI", (b_x + 5, b_y + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
-            cv2.rectangle(m.array, (b_x, b_y), (b_x + b_w, b_y + b_h), (255, 0, 0, 0))
+            x, y, width, height = detection.box # Get the bounding box coordinates
 
+            label = f"{labels[int(detection.category)]} ({detection.confidence:.2f})" # Create the label text with category and confidence
 
-def get_args():
-    """Gets command line arguments for the script."""
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--model", type=str, default="/usr/share/imx500-models/imx500_network_ssd_mobilenetv2_fpnlite_320x320_pp.rpk")
-    parser.add_argument("--fps", type=int)
-    parser.add_argument("--bounding-box-normalization", action=argparse.BooleanOptionalAction)
-    parser.add_argument("--bounding-box-order", choices=["yx", "xy"], default="yx")
-    parser.add_argument("--threshold", type=float, default=0.55)
-    parser.add_argument("--iou", type=float, default=0.65)
-    parser.add_argument("--max-detections", type=int, default=10)
-    parser.add_argument("--ignore-dash-labels", action=argparse.BooleanOptionalAction)
-    parser.add_argument("--postprocess", choices=["", "nanodet"], default=None)
-    parser.add_argument("-r", "--preserve-aspect-ratio", action=argparse.BooleanOptionalAction)
-    parser.add_argument("--labels", type=str)
-    parser.add_argument("--print-intrinsics", action="store_true")
+            (text_width, text_height), baseline = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1) # Get the size of the text
+            text_x = x + 5 # Offset text x-position slightly from the bounding box
+            text_y = y + 15 # Offset text y-position slightly from the bounding box
+
+            overlay = mapped.array.copy() # Create a copy of the image array for overlay
+            cv2.rectangle(overlay, (text_x, text_y - text_height), (text_x + text_width, text_y + baseline), (255, 255, 255), cv2.FILLED) # Draw a filled rectangle for the text background
+
+            cv2.addWeighted(overlay, 1 - bounding_box_opacity, mapped.array, bounding_box_opacity, 0, mapped.array) # Blend the overlay with the original image
+            cv2.putText(mapped.array, label, (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1) # Draw the label text on the image
+            cv2.rectangle(mapped.array, (x, y), (x + width, y + height), (0, 255, 0, 0), thickness = bounding_box_thickness) # Draw the bounding box around the detected object
+
+        if intrinsics.preserve_aspect_ratio: # If aspect ratio preservation is enabled:
+            box_x, box_y, box_width, box_height = imx500.get_roi_scaled(request) # Get the scaled ROI (Region Of Interest) rectangle from "get_roi_scaled"
+            color = (255, 0, 0) # Set its color
+            cv2.putText(mapped.array, "ROI", (box_x + 5, box_y + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1) # Label it
+            cv2.rectangle(mapped.array, (box_x, box_y), (box_x + box_width, box_y + box_height), (255, 0, 0, 0)) # Draw it
+
+def get_arguments():
+
+    """
+    Gets command line arguments for the script.
+
+    Arguments:
+        None
+
+    Returns:
+        "arguments": The parsed command line arguments
+
+    """
+
+    parser = argparse.ArgumentParser() # Creates an ArgumentParser object for parsing command-line arguments
+
+    parser.add_argument("--model", type = str, help = "Path of the model", default = "/usr/share/imx500-models/imx500_network_ssd_mobilenetv2_fpnlite_320x320_pp.rpk") # Adds a command-line argument for the model path with a default value
+
+    parser.add_argument("--fps", type = int, help = "Frames per second") # Adds a command-line argument for frames per second
+
+    parser.add_argument("--bounding-box-normalization", action = argparse.BooleanOptionalAction, help = "Normalize bbox") # Adds a command-line argument for bbox normalization
+
+    parser.add_argument("--bounding-box-order", choices = ["yx", "xy"], default = "yx", help = "Set bbox order yx -> (y0, x0, y1, x1) xy -> (x0, y0, x1, y1)") # Adds a command-line argument for bbox order
+
+    parser.add_argument("--threshold", type = float, default = 0.55, help = "Detection threshold") # Adds a command-line argument for detection threshold
+
+    parser.add_argument("--iou", type = float, default = 0.65, help = "Set iou threshold") # Adds a command-line argument for iou threshold
+
+    parser.add_argument("--max-detections", type = int, default = 10, help = "Set max detections") # Adds a command-line argument for max detections
+
+    parser.add_argument("--ignore-dash-labels", action = argparse.BooleanOptionalAction, help = "Remove '-' labels ") # Adds a command-line argument for ignoring dash labels
+
+    parser.add_argument("--postprocess", choices = ["", "nanodet"], default = None, help = "Run post process of type") # Adds a command-line argument for post-processing type
+
+    parser.add_argument("-r", "--preserve-aspect-ratio", action = argparse.BooleanOptionalAction, help = "preserve the pixel aspect ratio of the input tensor") # Adds a command-line argument for preserving aspect ratio
+
+    parser.add_argument("--labels", type = str, help = "Path to the labels file") # Adds a command-line argument for labels file path
+
+    parser.add_argument("--print-intrinsics", action = "store_true", help = "Print JSON network_intrinsics then exit") # Adds a command-line argument for printing intrinsics
+
     return parser.parse_args()
 
-
 def update_servo_tracking(x_center_normalized):
-    """Updates servo tracking and returns servo angle + direction string (smoothed)."""
+
+    """
+    Updates the servo tracking position based on the normalized x center position.
+
+    Arguments:
+        x_center_normalized (float): The normalized x center position of the detected object.
+
+    Returns:
+        "angle": The calculated servo angle position.
+
+    """
+
     global servo_position
 
-    threshold = 0.07          # Dead zone around the center
-    step = 0.02            # Target adjustment step (how far to move target per detection)
-    smooth_speed = 0.005      # How small each servo movement increment is
-    change_threshold = 0.005  # Minimum change before we move
-    max_pos = 1.0
-    min_pos = -1.0
     direction = None
 
-    target_pos = servo_position
+    target_position = servo_position
 
-    if x_center_normalized > 0.5 + threshold:
-        if servo_position > min_pos:
-            target_pos = servo_position - step
+    if x_center_normalized > 0.5 + servo_threshold:
+
+        if servo_position > servo_minimum_position:
+            target_position = servo_position - servo_step
             direction = "left"
+
         else:
             direction = "limit reached (left)"
-    elif x_center_normalized < 0.5 - threshold:
-        if servo_position < max_pos:
-            target_pos = servo_position + step
+
+    elif x_center_normalized < 0.5 - servo_threshold:
+
+        if servo_position < servo_maximum_position:
+            target_position = servo_position + servo_step
             direction = "right"
+
         else:
             direction = "limit reached (right)"
-    else:
-        direction = "centered"
 
-    # Clamp target position
-    target_pos = max(min_pos, min(max_pos, target_pos))
+    else: # Else (if the person is roughly in the middle):
+        direction = "centered" # Set direction to "centered"
 
-    # --- Smooth interpolation ---
-    if abs(target_pos - servo_position) >= change_threshold:
-        steps = int(abs(target_pos - servo_position) / smooth_speed)
-        direction_sign = 1 if target_pos > servo_position else -1
-        for _ in range(steps):
-            servo_position += direction_sign * smooth_speed
+    target_position = max(servo_minimum_position, min(servo_maximum_position, target_position))
+
+    if abs(target_position - servo_position) >= servo_change_threshold:
+
+        servo_steps = int(abs(target_position - servo_position) / servo_smooth_speed)
+
+        if target_position > servo_position:
+            direction_sign = 1
+
+        else:
+            direction_sign = -1
+
+        for _ in range(servo_steps):
+            servo_position += direction_sign * servo_smooth_speed
             servo.value = servo_position
-            time.sleep(0.005)  # smaller = smoother (but more CPU usage)
+            time.sleep(servo_step_delay)
 
     angle = (servo_position + 1) * 90
+
     print(f"Person x: {x_center_normalized:.2f} | Servo pos: {servo_position:.2f} | Angle: {angle:.1f}° | Direction: {direction}")
+
     return angle, direction
 
-
 def get_tracking_data():
-    """
-    Captures detections, tracks the person, checks for obstacles,
-    and returns (angle, direction, obstacle, person_height_normalized)
-    """
-    last_results = parse_detections(picam2.capture_metadata())
 
-    # --- Find person ---
-    person_detections = [d for d in last_results if intrinsics.labels[int(d.category)] == "person"]
-    person_height_norm = None
+    """
+    Captures detections, tracks the person and checks for obstacles.
+
+    Arguments:
+        None
+    
+    Returns:
+        "angle":
+        "direction":
+        "obstacle":
+        "person_height_normalized":
+
+    """
+
+    last_results = parse_detections(picam2.capture_metadata()) # Gets the latest results by calling "parse_detections"
+
+    person_detections = []
+
+    for detection in last_results:
+        if intrinsics.labels[int(detection.category)] == "person":
+            person_detections.append(detection) # Collect each person detection in a list
+
+    person_height_normalized = None
     angle, direction = 90, "none"
 
-    if person_detections:
-        person = person_detections[0]
-        x, y, w, h = person.box
-        x_center = x + w / 2
-        frame_width, frame_height = picam2.stream_configuration("main")["size"]
-        x_center_normalized = x_center / frame_width
-        person_height_norm = h / frame_height  # <--- NEW: normalized height
-        angle, direction = update_servo_tracking(x_center_normalized)
-    else:
+    if person_detections: # If there are any person detections:
+        person = person_detections[0] # Select the first one
+        x, _, width, height = person.box # Extract its bounding box data
+        x_center = x + width / 2 # Find the horizontal center of the detected person (in pixels)
+        camera_frame_width, camera_frame_height = picam2.stream_configuration("main")["size"]
+        x_center_normalized = x_center / camera_frame_width # Converts pixel position into normalized value between 0 and 1
+        angle, direction = update_servo_tracking(x_center_normalized) # Updates the servo position by calling "update_servo_tracking" with the normalized x-position
+        person_height_normalized = height / camera_frame_height # Calculates the person height relative to the camera frame height
+
+    else: # Else (if there arent any person detections):
         print("No person detected.")
 
-    # --- Detect obstacles ---
-    obstacle_labels = {
-        "chair", "couch", "bed", "bench", "table", "tv", "potted plant",
-        "car", "truck", "bottle", "vase", "wall", "refrigerator", "microwave"
-    }
+    obstacle_labels = {"chair", "couch", "bed", "bench", "table", "tv", "potted plant","car", "truck", "bottle", "vase", "wall", "refrigerator", "microwave"}
     obstacle_detected = False
-    for obs in last_results:
-        if intrinsics.labels[int(obs.category)] in obstacle_labels:
-            x, y, w, h = obs.box
-            if w * h > 10000:
-                label = intrinsics.labels[int(obs.category)]
+
+    for obstacle in last_results:
+
+        if intrinsics.labels[int(obstacle.category)] in obstacle_labels:
+            x, _, width, height = obstacle.box
+
+            if width * height > obstacle_area_threshold: # If the obstacle box area is larger than the threshold
+                label = intrinsics.labels[int(obstacle.category)]
                 print(f"Obstacle detected: {label}")
                 obstacle_detected = True
                 break
 
-    return angle, direction, obstacle_detected, person_height_norm
+    return angle, direction, obstacle_detected, person_height_normalized
 
+# --- Camera setup ---
 
-# --- Camera Initialization (as before) ---
-args = get_args()
-imx500 = IMX500(args.model)
-intrinsics = imx500.network_intrinsics or NetworkIntrinsics()
+arguments = get_arguments()
+imx500 = IMX500(arguments.model) # Loads the IMX500 camera device and its neural network model file
+intrinsics = imx500.network_intrinsics or NetworkIntrinsics() # Retrieves the model’s metadata, and if unavailable, creates a default "NetworkIntrinsics" instance
 
-if not intrinsics.task:
-    intrinsics.task = "object detection"
+if not intrinsics.task: # If the task type isn't defined in the model metadata:
+    intrinsics.task = "object detection" # Set the task type to "object detection"
 
-picam2 = Picamera2(imx500.camera_num)
-config = picam2.create_preview_configuration(
-    controls={"FrameRate": intrinsics.inference_rate},
-    buffer_count=12,
-    transform=libcamera.Transform(hflip=True, vflip=True)
+picam2 = Picamera2(imx500.camera_num) # Creates a control object for the physical camera
+
+config = picam2.create_preview_configuration( # Creates a preview configuration with:
+    controls = {"FrameRate": intrinsics.inference_rate}, # Frame rate from model intrinsics
+    buffer_count = 12, # 12 frame buffers (which improves the capture pipeline)
+    transform = libcamera.Transform(hflip = True, vflip = True) # Horizontal and vertical flipping
 )
 
-picam2.pre_callback = draw_detections
-picam2.start(config, show_preview=True)
+picam2.pre_callback = draw_detections # Before each frame is displayed, "draw_detections" is called to overlay bounding boxes and labels
+picam2.start(config, show_preview = True) # Starts the video streaming in a live preview window
 
 if intrinsics.preserve_aspect_ratio:
     imx500.set_auto_aspect_ratio()
 
 if __name__ == "__main__":
-    print("Starting standalone camera-servo tracking test...")
+
+    print("Starting camera-servo tracking test...")
+
     try:
         while True:
             angle, direction, obstacle, person_height = get_tracking_data()
 
             if person_height:
-                print(f"→ Person height (normalized): {person_height:.2f}")
+                print(f"Person height (normalized): {person_height:.2f}")
+
             if obstacle:
-                print("⚠️ Obstacle detected!")
+                print("Obstacle detected!")
             
-            time.sleep(0.2)
+            time.sleep(main_loop_update_speed)
 
     except KeyboardInterrupt:
         print("Stopped by user.")
