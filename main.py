@@ -17,7 +17,7 @@ follow_loop_update_time = 0.1
 
 # --- Helper functions ---
 
-def move_forward(press_duration = 0.2):
+def move_forward(press_duration = 0.75):
 
     """
     Moves the car forward.
@@ -32,11 +32,8 @@ def move_forward(press_duration = 0.2):
 
     press(22)
     time.sleep(press_duration)
-    unpress(22)
 
-    print(f"\nMoved forward for {press_duration} s")
-
-def move_backwards(press_duration = 0.2):
+def move_backwards(press_duration = 0.75):
     
     """
     Moves the car backwards.
