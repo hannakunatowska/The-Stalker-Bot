@@ -244,7 +244,7 @@ def get_arguments():
 
     parser.add_argument("--print-intrinsics", action = "store_true", help = "Print JSON network_intrinsics then exit") # Adds a command-line argument for printing intrinsics
 
-    return parser.parse_arguments()
+    return parser.parse_args()
 
 def update_servo_tracking(x_center_normalized):
 
