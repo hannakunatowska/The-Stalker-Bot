@@ -19,7 +19,7 @@ from picamera2.devices.imx500.postprocess import scale_boxes # Imports the scale
 
 main_loop_update_speed = 0.05
 
-obstacle_area_threshold = 10000 # Sets the obstacle area threshold to 10 000 pixels
+obstacle_area_threshold = 20000 # Sets the obstacle area threshold to 10 000 pixels
 
 last_detections = []
 
