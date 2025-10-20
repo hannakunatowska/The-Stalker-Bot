@@ -19,7 +19,6 @@ from picamera2.devices.imx500.postprocess import scale_boxes # Imports the scale
 
 main_loop_update_speed = 0.05
 
-camera_frame_width, camera_frame_height = picam2.stream_configuration("main")["size"]
 obstacle_area_threshold = 10000 # Sets the obstacle area threshold to 10 000 pixels
 
 last_detections = []
@@ -341,6 +340,7 @@ def get_tracking_data():
         person = person_detections[0] # Select the first one
         x, _, width, height = person.box # Extract its bounding box data
         x_center = x + width / 2 # Find the horizontal center of the detected person (in pixels)
+        camera_frame_width, camera_frame_height = picam2.stream_configuration("main")["size"]
         x_center_normalized = x_center / camera_frame_width # Converts pixel position into normalized value between 0 and 1
         angle, direction = update_servo_tracking(x_center_normalized) # Updates the servo position by calling "update_servo_tracking" with the normalized x-position
         person_height_normalized = height / camera_frame_height # Calculates the person height relative to the camera frame height
