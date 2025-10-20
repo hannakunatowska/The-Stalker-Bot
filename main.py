@@ -44,7 +44,8 @@ def move_backwards():
         None
         
     """
-
+    unpress(17)
+    unpress(27)
     press(25)
 
 def stop():
