@@ -17,7 +17,7 @@ follow_loop_update_time = 0.1
 
 # --- Helper functions ---
 
-def move_forward(press_duration = 0.75):
+def move_forward():
 
     """
     Moves the car forward.
@@ -31,9 +31,8 @@ def move_forward(press_duration = 0.75):
     """
 
     press(22)
-    time.sleep(press_duration)
 
-def move_backwards(press_duration = 0.75):
+def move_backwards():
     
     """
     Moves the car backwards.
@@ -47,10 +46,6 @@ def move_backwards(press_duration = 0.75):
     """
 
     press(25)
-    time.sleep(press_duration)
-    unpress(25)
-
-    print(f"\nMoved backwards for {press_duration} s")
 
 def stop():
 
@@ -86,12 +81,12 @@ def turn(direction, angle):
 
     if direction == "right":
         press(17)
-        move_forward(turn_time)
+        time.sleep(turn_time)
         unpress(17)
         
     if direction == "left":
         press(27)
-        move_forward(turn_time)
+        time.sleep(turn_time)
         unpress(27)
         
     print(f"\nTurned {direction} for {turn_time:.2f}s (angle was {angle:.1f})")
@@ -151,6 +146,8 @@ def follow():
 
         elif person_height > target_maximum_height:
             print("\nPerson is too close...")
+            move_backwards()
+            time.sleep(0.5)
             stop()
 
         else:
