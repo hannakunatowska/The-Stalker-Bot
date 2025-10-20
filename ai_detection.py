@@ -40,7 +40,7 @@ servo_smooth_speed = 0.005
 servo_step_delay = 0.005
 
 ema_smoothed_x_position = 0.5 # Initializes to the center
-ema_alpha = 0.2
+ema_alpha = 0.4
 
 # --- Servo setup ---
 
@@ -273,7 +273,7 @@ def update_servo_tracking(x_center_normalized):
         print(f"Person x: {x_center_normalized:.2f} | Smoothed x: {ema_smoothed_x_position:.3f} | Servo pos: {servo_position:.2f} | Angle: {angle:.1f}° | Direction: {direction}")
         return angle, direction # No motion is needed
 
-    if error > 0: # If the smoothed target lies to the right of the center:
+    if error < 0: # If the smoothed target lies to the right of the center:
 
         if servo_position < servo_maximum_position:
             target_position = servo_position + servo_step
