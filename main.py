@@ -14,11 +14,12 @@ target_maximum_height = 0.6
 safe_distance_in_cm = 40
 max_angle_offset = 10
 follow_loop_update_time = 0.1
+backing = False
 
 # --- Helper functions ---
 
 def move_forward():
-
+    global backing
     """
     Moves the car forward.
 
@@ -31,9 +32,10 @@ def move_forward():
     """
 
     press(22)
+    backing = False
 
 def move_backwards():
-    
+    global backing
     """
     Moves the car backwards.
 
@@ -47,6 +49,7 @@ def move_backwards():
     unpress(17)
     unpress(27)
     press(25)
+    backing = True
 
 def stop():
 
