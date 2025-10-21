@@ -20,7 +20,6 @@ backing = False
 # --- Helper functions ---
 
 def move_forward():
-    global backing
     """
     Moves the car forward.
 
@@ -33,10 +32,8 @@ def move_forward():
     """
 
     press(22)
-    backing = False
 
 def move_backwards():
-    global backing
     """
     Moves the car backwards.
 
@@ -50,10 +47,8 @@ def move_backwards():
     unpress(17)
     unpress(27)
     press(25)
-    backing = True
 
 def stop():
-    global backing
     """
     Stops the car.
 
@@ -67,10 +62,8 @@ def stop():
 
     for button_pin in button_pins:
         unpress(button_pin)
-    backing = False
 
 def turn(direction, angle):
-    global backing
     """
     Turns the car.
 
@@ -96,7 +89,6 @@ def turn(direction, angle):
         unpress(27)
         
     print(f"\nTurned {direction} for {turn_time:.2f}s (angle was {angle:.1f})")
-    backing = False
 
 def avoid_obstacle():
 
@@ -148,16 +140,19 @@ def follow():
         print(f"\nNormalized person height (Person height / Total frame height) = {person_height:.2f}")
 
         if person_height < target_minimum_height:
+            backing = False
             print("\nPerson is too far away, trying to move forward...")
             move_forward()
 
         elif person_height > target_maximum_height:
+            backing = True
             print("\nPerson is too close...")
             move_backwards()
             time.sleep(0.5)
             stop()
 
         else:
+            backing = False
             print("\nDistance is OK...")
 
         if direction == "centered" and not backing:
