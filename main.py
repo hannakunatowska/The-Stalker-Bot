@@ -130,7 +130,7 @@ def follow():
         distance_in_cm = get_distance() # Gets distance to closest obstacle from ultrasonic sensor
         
         if obstacle or distance_in_cm <= safe_distance_in_cm: # If either the AI camera or the ultrasonic sensor detects an obstacle:
-            print("\Trying to avoid obstacle...")
+            print("\nTrying to avoid obstacle...")
             avoid_obstacle()
             continue
             
