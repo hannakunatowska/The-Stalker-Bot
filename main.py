@@ -15,11 +15,12 @@ target_maximum_height = 0.6
 safe_distance_in_cm = 40
 max_angle_offset = 10
 follow_loop_update_time = 0.1
-backing = False
+going_forwards = False
 
 # --- Helper functions ---
 
 def move_forward():
+
     """
     Moves the car forward.
 
@@ -34,6 +35,7 @@ def move_forward():
     press(22)
 
 def move_backwards():
+
     """
     Moves the car backwards.
 
@@ -44,11 +46,11 @@ def move_backwards():
         None
         
     """
-    unpress(17)
-    unpress(27)
+
     press(25)
 
 def stop():
+
     """
     Stops the car.
 
@@ -64,6 +66,7 @@ def stop():
         unpress(button_pin)
 
 def turn(direction, angle):
+
     """
     Turns the car.
 
@@ -109,7 +112,7 @@ def avoid_obstacle():
 # --- Main program loop ---
 
 def follow():
-    global backing
+
     """
     Runs the person-following loop.
 
@@ -120,6 +123,8 @@ def follow():
         None
     
     """
+
+    global going_forwards
 
     while True:
 
@@ -140,24 +145,24 @@ def follow():
         print(f"\nNormalized person height (Person height / Total frame height) = {person_height:.2f}")
 
         if person_height < target_minimum_height:
-            backing = False
             print("\nPerson is too far away, trying to move forward...")
+            going_forwards = True
             move_forward()
 
         elif person_height > target_maximum_height:
-            backing = True
             print("\nPerson is too close...")
+            going_forwards = False
             move_backwards()
             time.sleep(0.5)
             stop()
 
         else:
-            backing = False
             print("\nDistance is OK...")
+            going_forwards = False
 
-        if direction == "centered" and not backing:
+        if direction == "centered":
 
-            if abs(angle - 90) > max_angle_offset:
+            if abs(angle - 90) > max_angle_offset and going_forwards:
 
                 if angle < 90:
                     turn("right", angle)
@@ -168,7 +173,7 @@ def follow():
             else:
                 print("\nCentered and aligned.")
 
-        elif direction in ("limit reached (left)", "limit reached (right)"):
+        elif direction in ("limit reached (left)", "limit reached (right)") and going_forwards:
             
             if angle < 90:
                 turn("right", angle)
