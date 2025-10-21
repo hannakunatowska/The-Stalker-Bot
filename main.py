@@ -1,4 +1,5 @@
 
+
 # --- Imports ---
 
 import time
@@ -52,7 +53,7 @@ def move_backwards():
     backing = True
 
 def stop():
-
+    global backing
     """
     Stops the car.
 
@@ -66,9 +67,10 @@ def stop():
 
     for button_pin in button_pins:
         unpress(button_pin)
+    backing = False
 
 def turn(direction, angle):
-
+    global backing
     """
     Turns the car.
 
@@ -94,6 +96,7 @@ def turn(direction, angle):
         unpress(27)
         
     print(f"\nTurned {direction} for {turn_time:.2f}s (angle was {angle:.1f})")
+    backing = False
 
 def avoid_obstacle():
 
@@ -114,7 +117,7 @@ def avoid_obstacle():
 # --- Main program loop ---
 
 def follow():
-
+    global backing
     """
     Runs the person-following loop.
 
@@ -157,7 +160,7 @@ def follow():
         else:
             print("\nDistance is OK...")
 
-        if direction == "centered":
+        if direction == "centered" and not backing:
 
             if abs(angle - 90) > max_angle_offset:
 
