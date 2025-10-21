@@ -15,7 +15,6 @@ target_maximum_height = 0.6
 safe_distance_in_cm = 40
 max_angle_offset = 10
 follow_loop_update_time = 0.1
-going_forwards = False
 
 # --- Helper functions ---
 
@@ -124,8 +123,6 @@ def follow():
     
     """
 
-    global going_forwards
-
     while True:
 
         angle, direction, obstacle, person_height = ai_detection.get_tracking_data() # Gets necessary data from the AI camera
@@ -146,40 +143,34 @@ def follow():
 
         if person_height < target_minimum_height:
             print("\nPerson is too far away, trying to move forward...")
-            going_forwards = True
             move_forward()
+
+            if direction == "centered":
+
+                if abs(angle - 90) > max_angle_offset:
+
+                    if angle < 90:
+                        turn("right", angle)
+                    
+                    else:
+                        turn("left", angle)
+            
+            elif direction in ("limit reached (left)", "limit reached (right)"):
+
+                if angle < 90:
+                    turn("right", angle)
+                    
+                else:
+                    turn("left", angle)
 
         elif person_height > target_maximum_height:
             print("\nPerson is too close...")
-            going_forwards = False
             move_backwards()
             time.sleep(0.5)
             stop()
 
         else:
             print("\nDistance is OK...")
-            going_forwards = False
-
-        if direction == "centered":
-
-            if abs(angle - 90) > max_angle_offset and going_forwards:
-
-                if angle < 90:
-                    turn("right", angle)
-                
-                else:
-                    turn("left", angle)
-
-            else:
-                print("\nCentered and aligned.")
-
-        elif direction in ("limit reached (left)", "limit reached (right)") and going_forwards:
-            
-            if angle < 90:
-                turn("right", angle)
-                
-            else:
-                turn("left", angle)
 
         time.sleep(follow_loop_update_time)
 
