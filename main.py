@@ -45,6 +45,8 @@ def move_backwards():
         None
         
     """
+    
+    
     unpress(move_forward_button_pin)
     press(move_forward_button_pin)
 
@@ -79,12 +81,14 @@ def turn(direction, angle):
     """
 
     if direction == "right":
-        press(turn_right_button_pin)
         unpress(turn_left_button_pin)
+        time.sleep(0.05)
+        press(turn_right_button_pin)
         
     if direction == "left":
-        press(turn_left_button_pin)
         unpress(turn_right_button_pin)
+        time.sleep(0.05)
+        press(turn_left_button_pin)
 
     if direction == "middle":
         unpress(turn_right_button_pin)
@@ -131,11 +135,13 @@ def follow():
         
         if obstacle or distance_in_cm <= safe_distance_in_cm: # If either the AI camera or the ultrasonic sensor detects an obstacle:
             print("\nTrying to avoid obstacle...")
+            turn("middle", angle)
             avoid_obstacle()
             continue
             
         if person_height is None:
             print("\nNo person detected, waiting...")
+            turn("middle", angle)
             stop()
             continue
 
@@ -150,7 +156,7 @@ def follow():
 
                 if abs(angle - 90) > max_angle_offset:
 
-                    if angle < 90:
+                    if angle > 90:
                         turn("right", angle)
                     
                     else:
@@ -172,6 +178,7 @@ def follow():
 
         elif person_height > target_maximum_height:
             print("\nPerson is too close...")
+            turn("middle", angle)
             move_backwards()
 
         else:
