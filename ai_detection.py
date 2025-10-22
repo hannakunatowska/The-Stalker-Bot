@@ -39,6 +39,7 @@ servo_deadband = 0.1
 servo_smooth_speed = 0.005
 servo_step_delay = 0.005
 servo_change_threshold = 0.001
+servo_direction_sign = 0
 
 ema_smoothed_x_position = 0.5 # Initializes to the center
 ema_alpha = 0.4
