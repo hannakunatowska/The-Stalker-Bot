@@ -24,6 +24,7 @@ def avoid_obstacle():
     #check right 
     #if not obstacle
     # go around right 
+    #continue
     
     # if not person
     #check left 
