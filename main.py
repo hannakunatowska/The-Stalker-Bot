@@ -30,7 +30,7 @@ def move_forward():
         None
 
     """
-
+    unpress(25)
     press(22)
 
 def move_backwards():
@@ -45,7 +45,7 @@ def move_backwards():
         None
         
     """
-
+    unpress(22)
     press(25)
 
 def stop():
@@ -166,8 +166,6 @@ def follow():
         elif person_height > target_maximum_height:
             print("\nPerson is too close...")
             move_backwards()
-            time.sleep(0.5)
-            stop()
 
         else:
             print("\nDistance is OK...")
