@@ -86,7 +86,7 @@ def turn(direction, angle):
         press(turn_left_button_pin)
         unpress(turn_right_button_pin)
 
-    if angle == 90:
+    if direction == "centered":
         unpress(turn_right_button_pin)
         unpress(turn_left_button_pin)
 
@@ -157,6 +157,8 @@ def follow():
                         turn("left", angle)
                     
                     continue
+                else:
+                    turn("centered", angle)
             
             elif direction in ("limit reached (left)", "limit reached (right)"):
 
