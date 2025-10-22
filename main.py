@@ -78,20 +78,18 @@ def turn(direction, angle):
     
     """
 
-    turn_time = abs(angle - 90) * turn_time_per_degree # Sets the turning time by multiplying the angle by "turn_time_per_degree"
-
     if direction == "right":
         press(turn_right_button_pin)
+        unpress(turn_left_button_pin)
         
     if direction == "left":
         press(turn_left_button_pin)
+        unpress(turn_right_button_pin)
 
-    time.sleep(turn_time)
-    unpress(turn_right_button_pin)
-    unpress(turn_left_button_pin)
-    
-    time.sleep(0.2)
-    
+    if angle == 90:
+        unpress(turn_right_button_pin)
+        unpress(turn_left_button_pin)
+
     print(f"\nTurned {direction} for {turn_time:.2f}s (angle was {angle:.1f})")
 
 def avoid_obstacle():
@@ -162,7 +160,7 @@ def follow():
             
             elif direction in ("limit reached (left)", "limit reached (right)"):
 
-                if angle < 90:
+                if angle > 90:
                     turn("right", angle)
                     
                 else:
