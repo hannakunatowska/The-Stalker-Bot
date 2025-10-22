@@ -4,7 +4,7 @@
 
 import time
 import ai_detection
-from remote_controller import press, unpress, button_pins
+from remote_controller import press, unpress, move_backwards_button_pin, move_forward_button_pin, turn_left_button_pin, turn_right_button_pin
 from ultrasonic_sensor import get_distance
 
 # --- Definitions ---
@@ -30,8 +30,8 @@ def move_forward():
         None
 
     """
-    unpress(25)
-    press(22)
+    unpress(move_backwards_button_pin)
+    press(move_forward_button_pin)
 
 def move_backwards():
 
@@ -45,8 +45,8 @@ def move_backwards():
         None
         
     """
-    unpress(22)
-    press(25)
+    unpress(move_forward_button_pin)
+    press(move_forward_button_pin)
 
 def stop():
 
@@ -61,8 +61,8 @@ def stop():
 
     """
 
-    for button_pin in button_pins:
-        unpress(button_pin)
+    unpress(move_forward_button_pin)
+    unpress(move_backwards_button_pin)
 
 def turn(direction, angle):
 
@@ -81,15 +81,17 @@ def turn(direction, angle):
     turn_time = abs(angle - 90) * turn_time_per_degree # Sets the turning time by multiplying the angle by "turn_time_per_degree"
 
     if direction == "right":
-        press(17)
-        time.sleep(turn_time)
-        unpress(17)
+        press(turn_right_button_pin)
         
     if direction == "left":
-        press(27)
-        time.sleep(turn_time)
-        unpress(27)
-        
+        press(turn_left_button_pin)
+
+    time.sleep(turn_time)
+    unpress(turn_right_button_pin)
+    unpress(turn_left_button_pin)
+    
+    time.sleep(0.2)
+    
     print(f"\nTurned {direction} for {turn_time:.2f}s (angle was {angle:.1f})")
 
 def avoid_obstacle():
@@ -142,6 +144,7 @@ def follow():
         print(f"\nNormalized person height (Person height / Total frame height) = {person_height:.2f}")
 
         if person_height < target_minimum_height:
+
             print("\nPerson is too far away, trying to move forward...")
             move_forward()
 
@@ -154,6 +157,8 @@ def follow():
                     
                     else:
                         turn("left", angle)
+                    
+                    continue
             
             elif direction in ("limit reached (left)", "limit reached (right)"):
 
@@ -162,6 +167,8 @@ def follow():
                     
                 else:
                     turn("left", angle)
+
+                continue
 
         elif person_height > target_maximum_height:
             print("\nPerson is too close...")
