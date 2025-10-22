@@ -90,7 +90,7 @@ def turn(direction, angle):
         unpress(turn_right_button_pin)
         unpress(turn_left_button_pin)
 
-    print(f"\nTurned {direction} for {turn_time:.2f}s (angle was {angle:.1f})")
+    print(f"\nTurned {direction} (angle was {angle:.1f})")
 
 def avoid_obstacle():
 
