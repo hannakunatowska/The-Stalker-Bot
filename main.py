@@ -9,8 +9,8 @@ from ultrasonic_sensor import get_distance
 # --- Definitions ---
 
 turn_time_per_degree = 0.9 / 90
-target_minimum_height = 0.45
-target_maximum_height = 0.6
+target_minimum_height = 0.7
+target_maximum_height = 0.9
 safe_distance_in_cm = 40
 max_angle_offset = 10
 follow_loop_update_time = 0.1
@@ -149,6 +149,7 @@ def follow():
         if person_height < target_minimum_height:
 
             print("\nPerson is too far away, trying to move forward...")
+
             move_forward()
 
             if direction == "centered":
@@ -162,6 +163,7 @@ def follow():
                         turn("left", angle)
                     
                     continue
+                
                 else:
                     turn("middle", angle)
             
