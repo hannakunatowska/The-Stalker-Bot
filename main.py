@@ -9,8 +9,8 @@ from ultrasonic_sensor import get_distance
 # --- Definitions ---
 
 turn_time_per_degree = 0.9 / 90
-target_minimum_height = 0.7
-target_maximum_height = 0.9
+target_minimum_height = 0.8
+target_maximum_height = 0.95
 safe_distance_in_cm = 40
 max_angle_offset = 10
 follow_loop_update_time = 0.1
