@@ -15,6 +15,14 @@ safe_distance_in_cm = 40
 max_angle_offset = 10
 follow_loop_update_time = 0.1
 
+first_timer = 0
+first_timer_off = True
+first_wait_time = 1
+
+second_timer = 0
+second_timer_off = True
+second_wait_time = 0.01
+
 # --- Helper functions ---
 
 def move_forward():
@@ -79,19 +87,22 @@ def turn(direction, angle):
     
     """
 
-    if direction == "right" and not check_button_press(turn_right_button_pin):
-        unpress(turn_left_button_pin)
-        time.sleep(0.01)
-        press(turn_right_button_pin)
+    if time.time() - first_timer > first_wait_time:
 
-    if direction == "left" and not check_button_press(turn_left_button_pin):
-        unpress(turn_right_button_pin)
-        time.sleep(0.01)
-        press(turn_left_button_pin)
+        if direction == "right" and not check_button_press(turn_right_button_pin):
+            unpress(turn_left_button_pin)
+            time.sleep(0.01)
+            press(turn_right_button_pin)
 
-    if direction == "middle":
-        unpress(turn_right_button_pin)
-        unpress(turn_left_button_pin)
+        if direction == "left" and not check_button_press(turn_left_button_pin):
+            unpress(turn_right_button_pin)
+            time.sleep(0.01)
+            press(turn_left_button_pin)
+
+    if time.time() - second_timer > second_wait_time:
+        if direction == "middle":
+            unpress(turn_right_button_pin)
+            unpress(turn_left_button_pin)
 
     print(f"\nTurned {direction} (angle was {angle:.1f})")
 
@@ -115,6 +126,8 @@ def avoid_obstacle():
 
 def follow():
 
+    global first_timer, second_timer, first_timer_off, second_timer_off
+
     """
     Runs the person-following loop.
 
@@ -132,6 +145,14 @@ def follow():
 
         distance_in_cm = get_distance() # Gets distance to closest obstacle from ultrasonic sensor
         
+        if (not (person_height < target_minimum_height)): # person is too close or does not exist
+
+            # resets the first timer if second timer is on and its within the given time
+            if ((time.time() - first_timer < first_wait_time) and (not second_timer_off)): 
+                first_timer_off = True
+            
+            
+
         if obstacle or distance_in_cm <= safe_distance_in_cm: # If either the AI camera or the ultrasonic sensor detects an obstacle:
             print("\nTrying to avoid obstacle...")
             turn("middle", angle)
@@ -147,10 +168,28 @@ def follow():
         print(f"\nNormalized person height (Person height / Total frame height) = {person_height:.2f}")
 
         if person_height < target_minimum_height:
+            
+
+             # resets the second timer if first timer is on and its within the given time
+            if ((time.time() - second_timer < second_wait_time) and (not first_timer_off)): 
+                second_timer_off = True
+
+            # turns the first timer on
+            if first_timer_off:
+                first_timer = time.time()
+                first_timer_off = False
+                second_timer_off = True
+
+            # turns the second timer on
+            if second_timer_off:
+                second_timer = time.time()
+                second_timer_off = False
+                first_timer_off = True
+
+            
 
             print("\nPerson is too far away, trying to move forward...")
-
-            move_forward()
+            move_forward()            
 
             if direction == "centered":
 
