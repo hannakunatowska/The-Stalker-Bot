@@ -19,7 +19,7 @@ from picamera2.devices.imx500.postprocess import scale_boxes # Imports the scale
 
 main_loop_update_speed = 0.05
 
-obstacle_area_threshold = 10000 # Sets the obstacle area threshold
+obstacle_area_threshold = 10000 # Sets the obstacle area threshold to 10 000 pixels
 
 last_detections = []
 
@@ -35,14 +35,10 @@ servo_minimum_position = -1
 servo_minimum_pulse_width = 0.5 / 1000
 servo_maximum_pulse_width = 2.5 / 1000
 servo_step = 0.04
-servo_deadband = 0.1
+servo_threshold = 0.07
+servo_change_threshold = 0.005
 servo_smooth_speed = 0.005
 servo_step_delay = 0.005
-servo_change_threshold = 0.001
-servo_direction_sign = 1
-
-ema_smoothed_x_position = 0.5 # Initializes to the center
-ema_alpha = 0.4
 
 # --- Servo setup ---
 
@@ -253,62 +249,61 @@ def get_arguments():
 def update_servo_tracking(x_center_normalized):
 
     """
-    Updates the servo tracking position based on the EMA smoothed x-position of the person.
+    Updates the servo tracking position based on the normalized x center position.
 
     Arguments:
         x_center_normalized (float): The normalized x center position of the detected object.
 
     Returns:
         "angle": The calculated servo angle position.
-        "direction":
 
     """
 
-    global servo_position, ema_smoothed_x_position
+    global servo_position
 
-    ema_smoothed_x_position = ema_alpha * x_center_normalized + (1.0 - ema_alpha) * ema_smoothed_x_position # Smooths the incoming x-position using the Exponential Moving Average (EMA) formula
-    error = ema_smoothed_x_position - 0.5 # Calculates the error relative to the center
+    direction = None
 
-    if abs(error) < servo_deadband: # If the error is smaller than the deadband:
-        direction = "centered"
-        angle = (servo_position + 1) * 90
-        print(f"Person x: {x_center_normalized:.2f} | Smoothed x: {ema_smoothed_x_position:.3f} | Servo pos: {servo_position:.2f} | Angle: {angle:.1f}° | Direction: {direction}")
-        return angle, direction # No motion is needed
+    target_position = servo_position
 
-    if error < 0: # If the smoothed target lies to the right of the center:
-
-        if servo_position < servo_maximum_position:
-            target_position = servo_position + servo_step
-            servo_direction_sign = 1
-            direction = "right"
-
-        else:
-            target_position = servo_position
-            direction = "limit reached (right)"
-
-    else: # Else (if it's to the left):
+    if x_center_normalized > 0.5 + servo_threshold:
 
         if servo_position > servo_minimum_position:
             target_position = servo_position - servo_step
-            servo_direction_sign = -1
             direction = "left"
 
         else:
-            target_position = servo_position
             direction = "limit reached (left)"
 
-    target_position = max(servo_minimum_position, min(servo_maximum_position, target_position)) # Ensures that the new position stays within a valid range
-    
-    servo_steps = max(1, int(abs(target_position - servo_position) / servo_smooth_speed)) # Calculates the amount of steps needed for a smooth transition
+    elif x_center_normalized < 0.5 - servo_threshold:
 
-    for _ in range(servo_steps): # Moves the servo gradually
-        if abs(servo_direction_sign * servo_smooth_speed) > servo_change_threshold:
-            servo_position += servo_direction_sign * servo_smooth_speed
-            servo_position = max(servo_minimum_position, min(servo_maximum_position, servo_position))
+        if servo_position < servo_maximum_position:
+            target_position = servo_position + servo_step
+            direction = "right"
+
+        else:
+            direction = "limit reached (right)"
+
+    else: # Else (if the person is roughly in the middle):
+        direction = "centered" # Set direction to "centered"
+
+    target_position = max(servo_minimum_position, min(servo_maximum_position, target_position))
+
+    if abs(target_position - servo_position) >= servo_change_threshold:
+
+        servo_steps = int(abs(target_position - servo_position) / servo_smooth_speed)
+
+        if target_position > servo_position:
+            direction_sign = 1
+
+        else:
+            direction_sign = -1
+
+        for _ in range(servo_steps):
+            servo_position += direction_sign * servo_smooth_speed
             servo.value = servo_position
-        time.sleep(servo_step_delay)
+            time.sleep(servo_step_delay)
 
-    angle = (servo_position + 1) * 90 # Recomputes the current servo angle
+    angle = (servo_position + 1) * 90
 
     print(f"Person x: {x_center_normalized:.2f} | Servo pos: {servo_position:.2f} | Angle: {angle:.1f}° | Direction: {direction}")
 
@@ -353,7 +348,7 @@ def get_tracking_data():
     else: # Else (if there arent any person detections):
         print("No person detected.")
 
-    obstacle_labels = {"chair", "couch", "bed", "bench", "table", "tv", "potted plant", "bottle", "vase", "wall", "refrigerator", "microwave"}
+    obstacle_labels = {"chair", "couch", "bed", "bench", "table", "tv", "potted plant","car", "truck", "bottle", "vase", "wall", "refrigerator", "microwave"}
     obstacle_detected = False
 
     for obstacle in last_results:
@@ -402,6 +397,9 @@ if __name__ == "__main__":
 
             if person_height:
                 print(f"Person height (normalized): {person_height:.2f}")
+
+            if obstacle:
+                print("Obstacle detected!")
             
             time.sleep(main_loop_update_speed)
 
