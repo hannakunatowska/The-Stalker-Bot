@@ -168,7 +168,7 @@ def follow():
             
             elif direction in ("limit reached (left)", "limit reached (right)"):
 
-                if angle > 90:
+                if angle < 90:
                     turn("right", angle)
                     
                 else:
