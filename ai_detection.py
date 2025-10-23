@@ -19,7 +19,7 @@ from picamera2.devices.imx500.postprocess import scale_boxes # Imports the scale
 
 main_loop_update_speed = 0.05
 
-obstacle_area_threshold = 10000 # Sets the obstacle area threshold to 10 000 pixels
+obstacle_width_threshold = 0.25 # Sets the obstacle width threshold to 1/4 of the screen width
 
 last_detections = []
 
@@ -356,7 +356,7 @@ def get_tracking_data():
         if intrinsics.labels[int(obstacle.category)] in obstacle_labels:
             x, _, width, height = obstacle.box
 
-            if width * height > obstacle_area_threshold: # If the obstacle box area is larger than the threshold
+            if width / camera_frame_width  > obstacle_width_threshold: # If the obstacle box width is larger than the threshold
                 label = intrinsics.labels[int(obstacle.category)]
                 print(f"Obstacle detected: {label}")
                 obstacle_detected = True
