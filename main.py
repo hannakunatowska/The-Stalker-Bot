@@ -14,9 +14,20 @@ target_maximum_height = 0.9
 safe_distance_in_cm = 40
 max_angle_offset = 10
 follow_loop_update_time = 0.1
+log_file_path = "robot_log.txt"
+
+# Clear log at start
+with open(log_file_path, "w") as f:
+    f.write("Robot session started\n")
 
 # --- Helper functions ---
 
+def log(msg):
+    """Prints and writes the message to a log file."""
+    print(msg)
+    with open(log_file_path, "a") as f:
+        f.write(msg + "\n")
+        
 def move_forward():
 
     """
@@ -134,21 +145,25 @@ def follow():
         
         if obstacle or distance_in_cm <= safe_distance_in_cm: # If either the AI camera or the ultrasonic sensor detects an obstacle:
             print("\nTrying to avoid obstacle...")
+            log("\nTrying to avoid obstacle...")
             turn("middle", angle)
             avoid_obstacle()
             continue
             
         if person_height is None:
             print("\nNo person detected, waiting...")
+            log("\nNo person detected, waiting...")
             turn("middle", angle)
             stop()
             continue
 
         print(f"\nNormalized person height (Person height / Total frame height) = {person_height:.2f}")
+        log(f"\nNormalized person height (Person height / Total frame height) = {person_height:.2f}")
 
         if person_height < target_minimum_height:
 
             print("\nPerson is too far away, trying to move forward...")
+            log("\nPerson is too far away, trying to move forward...")
 
             move_forward()
 
@@ -179,11 +194,13 @@ def follow():
 
         elif person_height > target_maximum_height:
             print("\nPerson is too close...")
+            log("\nPerson is too close...")
             turn("middle", angle)
             move_backwards()
 
         else:
             print("\nDistance is OK...")
+            log("\nDistance is OK...")
 
         time.sleep(follow_loop_update_time)
 
