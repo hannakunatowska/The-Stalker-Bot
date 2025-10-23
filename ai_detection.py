@@ -341,6 +341,7 @@ def get_tracking_data():
         x, _, width, height = person.box # Extract its bounding box data
         x_center = x + width / 2 # Find the horizontal center of the detected person (in pixels)
         camera_frame_width, camera_frame_height = picam2.stream_configuration("main")["size"]
+        print(f"camera_frame_width: {camera_frame_width} | camera_frame_height: {camera_frame_height})
         x_center_normalized = x_center / camera_frame_width # Converts pixel position into normalized value between 0 and 1
         angle, direction = update_servo_tracking(x_center_normalized) # Updates the servo position by calling "update_servo_tracking" with the normalized x-position
         person_height_normalized = height / camera_frame_height # Calculates the person height relative to the camera frame height
