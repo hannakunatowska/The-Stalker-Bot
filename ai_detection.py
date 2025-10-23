@@ -28,6 +28,7 @@ ignore_dash_labels = False
 
 camera_frame_width = 640
 camera_frame_height = 480
+camera_frame_area = camera_frame_width * camera_frame_height
 
 bounding_box_opacity = 0.7
 bounding_box_thickness = 2
@@ -325,7 +326,7 @@ def get_tracking_data():
         "angle":
         "direction":
         "obstacle":
-        "person_height_normalized":
+        "person_area_normalized":
 
     """
 
@@ -337,7 +338,7 @@ def get_tracking_data():
         if intrinsics.labels[int(detection.category)] == "person":
             person_detections.append(detection) # Collect each person detection in a list
 
-    person_height_normalized = None
+    person_area_normalized = None
     angle, direction = 90, "none"
 
     if person_detections: # If there are any person detections:
@@ -346,7 +347,8 @@ def get_tracking_data():
         x_center = x + width / 2 # Find the horizontal center of the detected person (in pixels)
         x_center_normalized = x_center / camera_frame_width # Converts pixel position into normalized value between 0 and 1
         angle, direction = update_servo_tracking(x_center_normalized) # Updates the servo position by calling "update_servo_tracking" with the normalized x-position
-        person_height_normalized = height / camera_frame_height # Calculates the person height relative to the camera frame height
+        #person_height_normalized = height / camera_frame_height # Calculates the person height relative to the camera frame height
+        person_area_normalized = (width * height) / camera_frame_area
 
     else: # Else (if there arent any person detections):
         print("No person detected.")
@@ -365,7 +367,7 @@ def get_tracking_data():
                 obstacle_detected = True
                 break
 
-    return angle, direction, obstacle_detected, person_height_normalized
+    return angle, direction, obstacle_detected, person_area_normalized
 
 # --- Camera setup ---
 
