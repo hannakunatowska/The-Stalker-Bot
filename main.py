@@ -212,8 +212,7 @@ def follow():
 
             
 
-            print("\nPerson is too far away, trying to move forward...")
-            move_forward()            
+                        
             print_and_log("Person is too far away, trying to move forward...")
 
             move_forward()
