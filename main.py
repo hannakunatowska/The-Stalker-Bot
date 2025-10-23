@@ -169,7 +169,7 @@ def follow():
 
         distance_in_cm = get_distance() # Gets distance to closest obstacle from ultrasonic sensor
         
-        if (not (person_height < target_minimum_height)): # person is too close or does not exist
+        if (person_height >= target_minimum_height): # person is too close
 
             # resets the first timer if second timer is on and its within the given time
             if ((time.time() - first_timer < first_wait_time) and (not second_timer_off)): 
