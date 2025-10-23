@@ -1,4 +1,5 @@
 
+
 # --- Imports ---
 
 import time
@@ -24,6 +25,9 @@ obstacle_width_threshold = 0.25 # Sets the obstacle width threshold to 1/4 of th
 last_detections = []
 
 ignore_dash_labels = False
+
+camera_frame_width = 640
+camera_frame_height = 480
 
 bounding_box_opacity = 0.7
 bounding_box_thickness = 2
@@ -340,8 +344,6 @@ def get_tracking_data():
         person = person_detections[0] # Select the first one
         x, _, width, height = person.box # Extract its bounding box data
         x_center = x + width / 2 # Find the horizontal center of the detected person (in pixels)
-        camera_frame_width, camera_frame_height = picam2.stream_configuration("main")["size"]
-        print(f"camera_frame_width: {camera_frame_width} | camera_frame_height: {camera_frame_height}")
         x_center_normalized = x_center / camera_frame_width # Converts pixel position into normalized value between 0 and 1
         angle, direction = update_servo_tracking(x_center_normalized) # Updates the servo position by calling "update_servo_tracking" with the normalized x-position
         person_height_normalized = height / camera_frame_height # Calculates the person height relative to the camera frame height
