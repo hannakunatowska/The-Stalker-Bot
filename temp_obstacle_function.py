@@ -50,4 +50,9 @@ def go_around_right()
     turn("right",0) 
     turn("left", 180) 
     
+def check_left()
+
+def check_right()
+
+    
 
