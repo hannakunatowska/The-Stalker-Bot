@@ -400,7 +400,7 @@ if __name__ == "__main__":
         while True:
             angle, direction, obstacle, person_area = get_tracking_data()
 
-            if person_height:
+            if person_area:
                 print(f"Person area (normalized): {person_area:.2f}")
 
             if obstacle:
