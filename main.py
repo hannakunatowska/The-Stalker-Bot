@@ -181,7 +181,7 @@ def follow():
             stop()
             continue
 
-        print_and_log(f"Normalized person height (Person area / Total frame area) = {person_area:.2f}")
+        print_and_log(f"Normalized person area (Person area / Total frame area) = {person_area:.2f}")
 
         if (person_area >= target_minimum_area): # person is too close
 
