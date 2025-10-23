@@ -3,7 +3,7 @@
 
 import time
 import ai_detection
-from remote_controller import press, unpress, move_backwards_button_pin, move_forward_button_pin, turn_left_button_pin, turn_right_button_pin
+from remote_controller import press, unpress, check_button_press, move_backwards_button_pin, move_forward_button_pin, turn_left_button_pin, turn_right_button_pin
 from ultrasonic_sensor import get_distance
 
 # --- Definitions ---
@@ -29,6 +29,7 @@ def move_forward():
         None
 
     """
+
     unpress(move_backwards_button_pin)
     press(move_forward_button_pin)
 
@@ -78,14 +79,14 @@ def turn(direction, angle):
     
     """
 
-    if direction == "right":
+    if direction == "right" and not check_button_press(turn_right_button_pin):
         unpress(turn_left_button_pin)
-        time.sleep(0.05)
+        time.sleep(0.01)
         press(turn_right_button_pin)
-        
-    if direction == "left":
+
+    if direction == "left" and not check_button_press(turn_left_button_pin):
         unpress(turn_right_button_pin)
-        time.sleep(0.05)
+        time.sleep(0.01)
         press(turn_left_button_pin)
 
     if direction == "middle":
