@@ -156,7 +156,7 @@ def follow():
 
                 if abs(angle - 90) > max_angle_offset:
 
-                    if angle > 90:
+                    if angle < 90:
                         turn("right", angle)
                     
                     else:
