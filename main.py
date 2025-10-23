@@ -207,7 +207,8 @@ def follow():
             move_backwards()
 
         else:
-            print_and_log("Distance is OK...")
+            print_and_log("Distance is OK stopping...")
+            stop()
 
         time.sleep(follow_loop_update_time)
 
