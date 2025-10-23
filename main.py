@@ -165,7 +165,7 @@ def follow():
 
     while True:
 
-        angle, direction, obstacle, person_height = ai_detection.get_tracking_data() # Gets necessary data from the AI camera
+        angle, direction, obstacle, person_area = ai_detection.get_tracking_data() # Gets necessary data from the AI camera
 
         distance_in_cm = get_distance() # Gets distance to closest obstacle from ultrasonic sensor    
 
@@ -175,21 +175,21 @@ def follow():
             avoid_obstacle()
             continue
             
-        if person_height is None:
+        if person_area is None:
             print_and_log("No person detected, waiting...")
             turn("middle", angle)
             stop()
             continue
 
-        print_and_log(f"Normalized person height (Person height / Total frame height) = {person_height:.2f}")
+        print_and_log(f"Normalized person height (Person area / Total frame area) = {person_area:.2f}")
 
-        if (person_height >= target_minimum_height): # person is too close
+        if (person_area >= target_minimum_area): # person is too close
 
             # resets the first timer if second timer is on and its within the given time
             if ((time.time() - first_timer < first_wait_time) and (not second_timer_off)): 
                 first_timer_off = True
 
-        if person_height < target_minimum_height:
+        if person_area < target_minimum_area:
             
 
              # resets the second timer if first timer is on and its within the given time
@@ -240,7 +240,7 @@ def follow():
 
                 continue
 
-        elif person_height > target_maximum_height:
+        elif person_area > target_maximum_area:
             print_and_log("Person is too close...")
             turn("middle", angle)
             move_backwards()
