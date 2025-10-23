@@ -22,9 +22,33 @@ first_wait_time = 1
 second_timer = 0
 second_timer_off = True
 second_wait_time = 0.01
+log_file_path = "robot_log.txt"
+
+# Log initialization
+
+with open(log_file_path, "w") as f:
+    f.write("Robot session started")
 
 # --- Helper functions ---
 
+def print_and_log(message):
+
+    """
+    Prints a message and writes it to a log file.
+
+    Arguments:
+        "message":
+
+    Returns:
+        None
+    
+    """
+
+    print("\n" + message)
+
+    with open(log_file_path, "a") as f:
+        f.write("\n" + message)
+        
 def move_forward():
 
     """
@@ -104,7 +128,7 @@ def turn(direction, angle):
             unpress(turn_right_button_pin)
             unpress(turn_left_button_pin)
 
-    print(f"\nTurned {direction} (angle was {angle:.1f})")
+    print_and_log(f"Turned {direction} (angle was {angle:.1f})")
 
 def avoid_obstacle():
 
@@ -119,7 +143,7 @@ def avoid_obstacle():
     
     """
 
-    print("\nStopping...")
+    print_and_log("Stopping...")
     stop()
 
 # --- Main program loop ---
@@ -154,18 +178,18 @@ def follow():
             
 
         if obstacle or distance_in_cm <= safe_distance_in_cm: # If either the AI camera or the ultrasonic sensor detects an obstacle:
-            print("\nTrying to avoid obstacle...")
+            print_and_log("Trying to avoid obstacle...")
             turn("middle", angle)
             avoid_obstacle()
             continue
             
         if person_height is None:
-            print("\nNo person detected, waiting...")
+            print_and_log("No person detected, waiting...")
             turn("middle", angle)
             stop()
             continue
 
-        print(f"\nNormalized person height (Person height / Total frame height) = {person_height:.2f}")
+        print_and_log(f"Normalized person height (Person height / Total frame height) = {person_height:.2f}")
 
         if person_height < target_minimum_height:
             
@@ -190,6 +214,9 @@ def follow():
 
             print("\nPerson is too far away, trying to move forward...")
             move_forward()            
+            print_and_log("Person is too far away, trying to move forward...")
+
+            move_forward()
 
             if direction == "centered":
 
@@ -217,12 +244,13 @@ def follow():
                 continue
 
         elif person_height > target_maximum_height:
-            print("\nPerson is too close...")
+            print_and_log("Person is too close...")
             turn("middle", angle)
             move_backwards()
 
         else:
-            print("\nDistance is OK...")
+            print_and_log("Distance is OK stopping...")
+            stop()
 
         time.sleep(follow_loop_update_time)
 
