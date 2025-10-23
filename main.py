@@ -1,5 +1,4 @@
 
-
 # --- Imports ---
 
 import time
@@ -46,9 +45,8 @@ def move_backwards():
         
     """
     
-    
     unpress(move_forward_button_pin)
-    press(move_forward_button_pin)
+    press(move_backwards_button_pin)
 
 def stop():
 
