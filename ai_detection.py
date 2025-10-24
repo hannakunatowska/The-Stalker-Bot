@@ -222,12 +222,12 @@ def draw_detections(request, stream = "main"):
             cv2.putText(
                 mapped.array,
                 video_status_text,
-                (10, camera_frame_height - 10),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.6,
-                (255, 255, 0),
-                2,
-                cv2.LINE_AA
+                (camera_frame_width // 4, camera_frame_height - 40),
+                cv2.FONT_HERSHEY_COMPLEX,
+                0.4, # Size
+               (0, 255, 0),
+                2, # Stroke thickness in pixels
+                cv2.LINE_AA # Anti-aliasing
             )
         
         if video_recording: # If video recording is enabled:
