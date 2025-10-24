@@ -39,7 +39,10 @@ video_recording = True # Flag to enable or disable video recording
 video_recording_fps = 30 # Frames per second for video recording
 video_recording_size = (camera_frame_width, camera_frame_height) # Size of the video recording frame
 
-video_status_text = "" 
+video_status_text = ""
+video_status_text_font = cv2.FONT_HERSHEY_COMPLEX
+video_status_text_size = 0.7
+video_status_text_thickness = 0.7
 
 # --- Servo definitions ---
 
@@ -219,14 +222,20 @@ def draw_detections(request, stream = "main"):
             cv2.rectangle(mapped.array, (box_x, box_y), (box_x + box_width, box_y + box_height), (255, 0, 0, 0)) # Draw it
 
         if video_status_text: # If there is a video status text:
+            
+            (text_width, _), _ = cv2.getTextSize(video_status_text, video_status_text_font, video_status_text_size, video_status_text_thickness)
+
+            text_x = (camera_frame_width - text_width) // 2
+            text_y = camera_frame_height - 70
+
             cv2.putText(
                 mapped.array,
                 video_status_text,
-                (camera_frame_width // 4, camera_frame_height - 40),
-                cv2.FONT_HERSHEY_COMPLEX,
-                0.4, # Size
+                (text_x, text_y),
+                video_status_text_font,
+                video_status_text_size,
                (0, 255, 0),
-                2, # Stroke thickness in pixels
+                video_status_text_thickness,
                 cv2.LINE_AA # Anti-aliasing
             )
         
