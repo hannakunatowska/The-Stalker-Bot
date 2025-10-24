@@ -2,6 +2,7 @@
 # --- Imports ---
 
 from gpiozero import DistanceSensor
+from collections import deque
 import time
 
 # --- Definitions ---
@@ -16,7 +17,7 @@ timeout = 1.0
 
 # --- Sensor setup ---
 
-ultrasonicSensor = DistanceSensor(echo = echo_pin, trigger = trigger_pin, max_distance = max_distance_in_m)
+ultrasonic_sensor = DistanceSensor(echo = echo_pin, trigger = trigger_pin, max_distance = max_distance_in_m)
 
 print("\nUltrasonic sensor initialized.")
 
@@ -35,7 +36,7 @@ def get_distance():
 
     """
 
-    distance_in_m = ultrasonicSensor.distance  # Returns a value between 0.0 and 1.0 (relative to max_distance)
+    distance_in_m = ultrasonic_sensor.distance  # Returns a value between 0.0 and 1.0 (relative to max_distance)
     distance_in_cm = distance_in_m * 100
 
     return round(distance_in_cm, 1)
