@@ -136,7 +136,7 @@ def turn(direction, angle):
         unpress(turn_right_button_pin)
         unpress(turn_left_button_pin)
 
-    print_and_log(f"Turned {direction} (angle was {angle:.1f})")
+    print_and_log(f"Turning {direction}! Servo angle: {angle:.1f} °")
 
 def avoid_obstacle():
 
@@ -174,11 +174,12 @@ def follow():
     while True:
 
         angle, direction, obstacle, person_area = ai_detection.get_tracking_data() # Gets necessary data from the AI camera
+        person_area_percentage = person_area * 100
 
         distance_in_cm = get_distance() # Gets distance to closest obstacle from ultrasonic sensor    
 
         if obstacle or distance_in_cm <= safe_distance_in_cm: # If either the AI camera or the ultrasonic sensor detects an obstacle:
-            print_and_log("Trying to avoid obstacle...")
+            print_and_log("Trying to avoid an obstacle...")
             turn("middle", angle)
             avoid_obstacle()
             continue
@@ -188,8 +189,8 @@ def follow():
             turn("middle", angle)
             stop()
             continue
-
-        print_and_log(f"Normalized person area (Person area / Total frame area) = {person_area:.2f}")
+        
+        print_and_log(f"Person takes up {person_area_percentage:.2f} % of the frame")
 
         if not (person_area < target_minimum_area): # person is not too far away
 
@@ -243,12 +244,12 @@ def follow():
                 continue
 
         elif person_area > target_maximum_area:
-            print_and_log("Person is too close...")
+            print_and_log("Person is too close, moving backwards...")
             turn("middle", angle)
             move_backwards()
 
         else:
-            print_and_log("Distance is OK stopping...")
+            print_and_log("Distance is OK, stopping...")
             stop()
 
         time.sleep(follow_loop_update_time)

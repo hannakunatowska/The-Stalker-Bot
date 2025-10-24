@@ -40,8 +40,8 @@ video_recording_fps = 30 # Frames per second for video recording
 video_recording_size = (camera_frame_width, camera_frame_height) # Size of the video recording frame
 
 video_status_text = ""
-video_status_text_font = cv2.FONT_HERSHEY_COMPLEX
-video_status_text_size = 0.7
+video_status_text_font = cv2.FONT_HERSHEY_PLAIN
+video_status_text_size = 0.5
 video_status_text_thickness = 1
 
 # --- Servo definitions ---
