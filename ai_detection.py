@@ -408,7 +408,7 @@ if intrinsics.preserve_aspect_ratio:
 if video_recording:
 
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S") # Gets the current timestamp for the video file name
-    video_recording_path = f"/home/pi/ai_camera_record_{timestamp}.avi"
+    video_recording_path = f"/home/garage/Documents/repositories/The-Stalker-Bot/videos/{timestamp}.avi"
 
     video_writer = cv2.VideoWriter(
     video_recording_path,
