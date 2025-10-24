@@ -23,7 +23,7 @@ _last_time = time.time()
 def get_distance():
     global _last_valid, _last_time
 
-    raw = ultrasonic_sensor.distance * 100  # convert m -> cm
+    raw = ultrasonic_sensor.distance * 100  #gets the distance from the sensor
     now = time.time()
 
     # Accept if difference is reasonable
