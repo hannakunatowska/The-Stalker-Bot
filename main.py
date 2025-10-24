@@ -6,14 +6,20 @@ import ai_detection
 from remote_controller import press, unpress, check_button_press, move_backwards_button_pin, move_forward_button_pin, turn_left_button_pin, turn_right_button_pin
 from ultrasonic_sensor import get_distance
 
-# --- Definitions ---
+# --- General definitions ---
 
 turn_time_per_degree = 0.9 / 90
+
 target_minimum_area = 0.35
 target_maximum_area = 0.5
+
 safe_distance_in_cm = 40
+
 max_angle_offset = 10
+
 follow_loop_update_time = 0.1
+
+# --- Timer definitions ---
 
 first_timer = 0
 first_timer_off = True
@@ -22,9 +28,10 @@ first_wait_time = 1
 second_timer = 0
 second_timer_off = True
 second_wait_time = 0.1
-log_file_path = "robot_log.txt"
 
 # --- Log initialization ---
+
+log_file_path = "robot_log.txt"
 
 with open(log_file_path, "w") as f:
     f.write("Robot session started")
