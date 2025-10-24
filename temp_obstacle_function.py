@@ -1,13 +1,29 @@
+# --- Imports ---
+
 import ai_detection
 import time
+from gpiozero import Servo # Imports the Servo class from the gpiozero module for controlling servo motors
 from main import stop, move_backwards, move_forward, turn, follow
 
-def avoid_obstacle():
+# --- Servo definitions ---
 
-     obstacle_note_front = False
-     obstacle_note_side = False
-     timer = 0
-     angle, direction, obstacle, person_height = ai_detection.get_tracking_data() # Gets necessary data from the AI camera
+servo_maximum_position = 1 # looking right
+servo_minimum_position = -1 # looking left
+servo_minimum_pulse_width = 0.5 / 1000
+servo_maximum_pulse_width = 2.5 / 1000
+servo_step = 0.04
+servo_threshold = 0.2
+servo_change_threshold = 0.005
+servo_smooth_speed = 0.005
+servo_step_delay = 0.005
+
+# --- Servo setup ---
+
+servo = Servo(18, min_pulse_width = servo_minimum_pulse_width, max_pulse_width = servo_maximum_pulse_width) # Creates a servo object on GPIO pin 18 with specified pulse widths
+servo_position = 0.0 # Creates a variable for the servo position and initializes its value to 0.0 (center position)
+servo.value = servo_position # Sets the position to "servo_position"
+
+def avoid_obstacle():
 
      """
      Avoids an obstacle by stopping.
@@ -19,7 +35,15 @@ def avoid_obstacle():
          None
     
      """
-    
+
+     # --- Temporary variables ---
+
+     obstacle_note_front = False
+     obstacle_note_side = False
+     timer = 0
+     angle, direction, obstacle, person_height = ai_detection.get_tracking_data() # Gets necessary data from the AI camera
+
+
      print("\nStopping...")
      stop() # stop
 
@@ -66,7 +90,7 @@ def avoid_obstacle():
                print("\nNotes if there is an obstacle or not")
                obstacle_note_front = obstacle
 
-               #-------------- checking left ----------------
+               # --- Checking Left ---
 
                print("\nNo person detected, checking left...")
                check_left() # check left
@@ -132,11 +156,11 @@ def avoid_obstacle():
 
                               return
 
-               # checking left
+               # Checking Left
 
-               #-------------- checking right ----------------
+               # --- Checking Right ---
 
-               else: # no person to the left
+               else: # else no person to the left
                     print("\nNo person to the left, checking right...")
                     check_right() # check right
                
@@ -201,7 +225,9 @@ def avoid_obstacle():
 
                                    return
                               
-               # -------------------------------------------
+               # Checking Right
+               
+               # --- No Person Found ---
 
                     else: # else no person detected
                          print("\nNo persen detected, stopping...")
@@ -239,7 +265,23 @@ def go_around_right():
     
 def check_left():
 
+     """
+     
+     Turning the servo left
+     
+     """
+
+     servo.value = servo_minimum_position
+
 def check_right():
+
+     """
+     
+     Turning the servo right
+     
+     """
+
+     servo.value = servo_maximum_position
 
     
 
