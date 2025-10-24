@@ -174,7 +174,6 @@ def follow():
     while True:
 
         angle, direction, obstacle, person_area = ai_detection.get_tracking_data() # Gets necessary data from the AI camera
-        person_area_percentage = person_area * 100
 
         distance_in_cm = get_distance() # Gets distance to closest obstacle from ultrasonic sensor    
 
@@ -190,7 +189,7 @@ def follow():
             stop()
             continue
         
-        print_and_log(f"Person takes up {person_area_percentage:.2f} % of the frame")
+        print_and_log(f"Person takes up {person_area:.2f} of the total frame size")
 
         if not (person_area < target_minimum_area): # person is not too far away
 
