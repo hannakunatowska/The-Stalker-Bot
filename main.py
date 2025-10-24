@@ -13,7 +13,7 @@ turn_time_per_degree = 0.9 / 90
 target_minimum_area = 0.35
 target_maximum_area = 0.5
 
-safe_distance_in_cm = 40
+safe_distance_in_cm = 50
 
 max_angle_offset = 10
 
