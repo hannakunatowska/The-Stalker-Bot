@@ -10,6 +10,8 @@ echo_pin = 24
 trigger_pin = 23
 max_distance_in_m = 2
 distance_loop_update_time = 0.2
+buffer_size = 7
+
 
 # --- Sensor setup ---
 
