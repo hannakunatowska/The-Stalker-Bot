@@ -24,7 +24,7 @@ second_timer_off = True
 second_wait_time = 0.01
 log_file_path = "robot_log.txt"
 
-# Log initialization
+# --- Log initialization ---
 
 with open(log_file_path, "w") as f:
     f.write("Robot session started")
