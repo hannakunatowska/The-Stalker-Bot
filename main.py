@@ -111,22 +111,22 @@ def turn(direction, angle):
     
     """
 
-    if time.time() - first_timer > first_wait_time:
+    #if time.time() - first_timer > first_wait_time:
 
-        if direction == "right" and not check_button_press(turn_right_button_pin):
-            unpress(turn_left_button_pin)
-            time.sleep(0.01)
-            press(turn_right_button_pin)
+    if direction == "right" and not check_button_press(turn_right_button_pin):
+        unpress(turn_left_button_pin)
+        time.sleep(0.01)
+        press(turn_right_button_pin)
 
-        if direction == "left" and not check_button_press(turn_left_button_pin):
-            unpress(turn_right_button_pin)
-            time.sleep(0.01)
-            press(turn_left_button_pin)
+    if direction == "left" and not check_button_press(turn_left_button_pin):
+        unpress(turn_right_button_pin)
+        time.sleep(0.01)
+        press(turn_left_button_pin)
 
-    if time.time() - second_timer > second_wait_time:
-        if direction == "middle":
-            unpress(turn_right_button_pin)
-            unpress(turn_left_button_pin)
+    #if time.time() - second_timer > second_wait_time:
+    if direction == "middle":
+        unpress(turn_right_button_pin)
+        unpress(turn_left_button_pin)
 
     print_and_log(f"Turned {direction} (angle was {angle:.1f})")
 
