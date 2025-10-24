@@ -21,7 +21,7 @@ first_wait_time = 1
 
 second_timer = 0
 second_timer_off = True
-second_wait_time = 0.01
+second_wait_time = 0.1
 log_file_path = "robot_log.txt"
 
 # --- Log initialization ---
@@ -125,7 +125,6 @@ def turn(direction, angle):
         time.sleep(0.01)
         press(turn_left_button_pin)
 
-    #if time.time() - second_timer > second_wait_time:
     if direction == "middle":
         unpress(turn_right_button_pin)
         unpress(turn_left_button_pin)
@@ -185,32 +184,26 @@ def follow():
 
         print_and_log(f"Normalized person area (Person area / Total frame area) = {person_area:.2f}")
 
-        if (person_area >= target_minimum_area): # person is too close
+        if not (person_area < target_minimum_area): # person is not too far away
 
-            # resets the first timer if second timer is on and its within the given time
-            if ((time.time() - first_timer < first_wait_time) and (not second_timer_off)): 
+            # resets the first timer if second timer is within wait time
+            if (time.time() - second_timer < second_wait_time): 
                 first_timer_off = True
-
-        if person_area < target_minimum_area:
-            
-
-             # resets the second timer if first timer is on and its within the given time
-            if ((time.time() - second_timer < second_wait_time) and (not first_timer_off)): 
-                second_timer_off = True
-
-            # turns the first timer on
-            if first_timer_off:
-                first_timer = time.time()
-                first_timer_off = False
-                second_timer_off = True
 
             # turns the second timer on
             if second_timer_off:
                 second_timer = time.time()
                 second_timer_off = False
-                first_timer_off = True
 
-            
+        if person_area < target_minimum_area:
+
+            # resets the second timer when person is too far away
+            second_timer_off = True
+
+            # turns the first timer on
+            if first_timer_off:
+                first_timer = time.time()
+                first_timer_off = False
 
                         
             print_and_log("Person is too far away, trying to move forward...")
