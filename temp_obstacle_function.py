@@ -4,7 +4,8 @@ from main import stop, move_backwards, move_forward, turn, follow
 
 def avoid_obstacle():
 
-     obstacle_note = False
+     obstacle_note_front = False
+     obstacle_note_side = False
      timer = 0
      angle, direction, obstacle, person_height = ai_detection.get_tracking_data() # Gets necessary data from the AI camera
 
@@ -20,83 +21,191 @@ def avoid_obstacle():
      """
     
      print("\nStopping...")
-     stop()    # stop
+     stop() # stop
 
      print("\nMoving backwards...")
      
-     timer = time.time()  # Start the timer
-     while time.time() - timer < 1:  # Move backwards for 1 seconds
+     timer = time.time() # Start the timer
+     while time.time() - timer < 1: # Move backwards for 1 seconds
           move_backwards()
      
 
      if person_height is not None: # if person
-          if direction == "centered":   # if centered
+          if direction == "centered": # if centered
               
                print("\nChecking left...")
-               check_left()   # check left
+               check_left() # check left
 
-               if not obstacle:    # if not obstacle 
+               if not obstacle: # if not obstacle 
                     print("\nObstacle not detected, going around...")
-                    go_around_left()    # go_around_left()
+                    go_around_left() # go_around_left()
 
-               else:     # else obstacle   
-                    print("\nNo person detected, checking right...")
-                    check_right()  # check right 
+                    print("\nNow following...")
+                    follow() # following after going around
 
-                    if not obstacle:    # if not obstacle
-                         print("\nNo obstacle detected, going around...")
-                         go_around_right()   # go around right 
-
-
-
-     if person_height is None:     # if no person
-          if direction == "centered":
-               print("\nNotes if there is an obstacle or not")
-               obstacle_note = obstacle
-
-               print("\nNo person detected, checking left...")
-               check_left()   # check left
-
-               if ((person_height is not None) and (not obstacle)):   # if person and not obstacle
-                    print("\nPerson found, following...")
-                    follow()     # follow
                     return
-               
-               elif ((person_height is not None) and (obstacle)):     # elif person and obstacle
 
-                    if obstacle_note:   # if theres an obstacle to the right
+               else: # else obstacle   
+                    print("\nNo person detected, checking right...")
+                    check_right() # check right 
 
-                         check_left()
+                    if not obstacle: # if not obstacle
+                         print("\nNo obstacle detected, going around...")
+                         go_around_right() # go around right 
 
-                         print("\nPerson and obstacle detected, going around...")
-                         go_around_left()  # go around left
+                         print("\nNow following...")
+                         follow() # following after going around
 
-                    if ((person_height is not None) and (not obstacle)):   # if person and not obstacle
-                         print("\nPerson found, following...")
-                         follow()     # follow
                          return
 
-               print("\nNo person to the left, checking right...")
-               check_right()  # check right
 
-               if ((person_height is not None) and (not obstacle)):  # if person and not obstacle
-                    print("\nPerson found, following...")
-                    follow()     # follow
 
-               elif ((person_height is None) and (not obstacle)):    # elif no person and not obstacle
-                    print("\nNo person detected, no obstacle detected, going around...")
-                    go_around_right() # go around right
+     if person_height is None: # if no person
 
-                    print("\nChecking right...")
-                    check_right()  # check right
+          if direction == "centered":
+               print("\nNotes if there is an obstacle or not")
+               obstacle_note_front = obstacle
 
-                    if ((person_height is not None) and (not obstacle)):  # if person and not obstacle
+               #-------------- checking left ----------------
+
+               print("\nNo person detected, checking left...")
+               check_left() # check left
+
+               if person_height is not None: # checks if theres a person the left
+
+                    print("\nNoting if there's an obstacle to the right")
+                    check_right() # checking right
+
+                    obstacle_note_side = obstacle
+
+                    check_left()
+
+                    if not obstacle: # if no obstacle to the left
                          print("\nPerson found, following...")
-                         follow()     # follow
+                         follow() # follow
 
-               else:     # else no person detected
-                    print("\nNo persen detected, stopping...")
-                    stop()   # stop
+                         return
+                    
+                    elif obstacle: # elif person and obstacle to the left
+
+                         """
+                         
+                         backing to right so that the person is straight ahead
+
+                         now facing the past left
+
+                         """
+
+                         if obstacle_note_front: # if there's an obstacle to the right
+                              print("\nObstacle on the right, checking left...")
+                              check_left() # check left for obstacle again
+
+                              if not obstacle: # if no obstacle
+                                   print("\nPerson and obstacle detected, going around...")
+                                   go_around_left() # go around left
+
+                                   print("\nNow following...")
+                                   follow() # following after going around
+
+                                   return
+
+                              elif obstacle_note_side: # sorrounded by obstacles
+                                   print("\nSorrounded by obstacles, stopping...")
+                                   stop() # stopping
+
+                                   return
+                              
+                              else: # else no obstacle behind
+
+                                   """
+                                   
+                                   backing out
+                                   
+                                   """
+
+                         else: # else there is no obstacle to the right
+                              print("\nNo obstacle to the right, going around...")
+                              go_around_right() # going around right
+
+                              print("\nNow following...")
+                              follow() # following after going around
+
+                              return
+
+               # checking left
+
+               #-------------- checking right ----------------
+
+               else: # no person to the left
+                    print("\nNo person to the left, checking right...")
+                    check_right() # check right
+               
+                    if person_height is not None: # person to the right 
+
+                         print("\nNoting if there's an obstacle to the left...")
+                         check_left() # check left
+
+                         obstacle_note_side = obstacle
+
+                         check_right()
+
+                         if not obstacle: # if no obstacle
+                              print("\nPerson found, following...")
+                              follow() # follow
+
+                              return
+
+                         elif obstacle: # elif obstacle
+
+                              """
+                         
+                              backing to left so that the person is straight ahead
+
+                              now facing the past right
+
+                              """
+
+                              if obstacle_note_front: # if there's an obstacle to the left
+                                   print("\nObstacle to the left, checking right again...")
+                                   check_right() # checking right again
+
+                                   if not obstacle: # if no obstacle on right side
+                                        print("\nNo obstacle to the right, going around...")
+                                        go_around_right # going around right
+                                        
+                                        print("\nNow following...")
+                                        follow() # following
+
+                                        return
+                                   
+                                   elif obstacle_note_side: # else sorrounded by obstacles
+                                        print("\nSorrounded by obstacles, stopping...")
+                                        stop() #stopping
+
+                                        return
+                                   
+                                   else: # else no obstacle behind
+
+                                        """
+                                        
+                                        backing out
+                                        
+                                        """
+
+                              else: # else no obstacle on left side
+                                   print("\nNo obstacle to the left, going around...")
+                                   go_around_left() # going around left
+
+                                   print("\nNow following...")
+                                   follow() # following
+
+                                   return
+                              
+               # -------------------------------------------
+
+                    else: # else no person detected
+                         print("\nNo persen detected, stopping...")
+                         stop() # stopping
 
 
             
