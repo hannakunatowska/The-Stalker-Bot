@@ -40,6 +40,8 @@ video_recording = True # Flag to enable or disable video recording
 video_recording_fps = 30 # Frames per second for video recording
 video_recording_size = (camera_frame_width, camera_frame_height) # Size of the video recording frame
 
+video_status_text = "" 
+
 # --- Servo definitions ---
 
 servo_maximum_position = 1
@@ -185,6 +187,8 @@ def draw_detections(request, stream = "main"):
 
     """
 
+    global video_status_text
+
     detections = last_detections # Get the last detection results
 
     if detections is None:
@@ -216,6 +220,18 @@ def draw_detections(request, stream = "main"):
             color = (255, 0, 0) # Set its color
             cv2.putText(mapped.array, "ROI", (box_x + 5, box_y + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1) # Label it
             cv2.rectangle(mapped.array, (box_x, box_y), (box_x + box_width, box_y + box_height), (255, 0, 0, 0)) # Draw it
+
+        if video_status_text: # If there is a video status text:
+            cv2.putText(
+                mapped.array,
+                video_status_text,
+                (10, camera_frame_height - 10),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                (255, 255, 0),
+                2,
+                cv2.LINE_AA
+            )
         
         if video_recording: # If video recording is enabled:
             frame_bgr = cv2.cvtColor(mapped.array, cv2.COLOR_RGB2BGR) # Convert the image from RGB to BGR format for OpenCV compatibility
@@ -408,7 +424,7 @@ if intrinsics.preserve_aspect_ratio:
 if video_recording:
 
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S") # Gets the current timestamp for the video file name
-    video_recording_path = f"/home/pi/ai_camera_record_{timestamp}.avi"
+    video_recording_path = f"/home/garage/Documents/repositories/The-Stalker-Bot/videos/{timestamp}.avi"
 
     video_writer = cv2.VideoWriter(
     video_recording_path,

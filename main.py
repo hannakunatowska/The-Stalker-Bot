@@ -48,6 +48,8 @@ def print_and_log(message):
 
     with open(log_file_path, "a") as f:
         f.write("\n" + message)
+
+    ai_detection.video_status_text = message # Update the video status text in the AI detection module
         
 def move_forward():
 
