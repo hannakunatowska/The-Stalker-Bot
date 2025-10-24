@@ -1,5 +1,4 @@
 
-
 # --- Imports ---
 
 import time
@@ -87,7 +86,6 @@ class Detection:
         self.confidence = confidence
         self.box = imx500.convert_inference_coords(coords, metadata, picam2)
 
-
 def parse_detections(metadata):
 
     """
@@ -142,7 +140,6 @@ def parse_detections(metadata):
             last_detections.append(detection) # Add it to "last_detections"
 
     return last_detections
-
 
 @lru_cache # Caches the results of the function below (to avoid redundant computations)
 def get_labels():
