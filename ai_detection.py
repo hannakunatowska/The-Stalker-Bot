@@ -41,7 +41,7 @@ video_recording_size = (camera_frame_width, camera_frame_height) # Size of the v
 
 video_status_text = ""
 video_status_text_font = cv2.FONT_HERSHEY_PLAIN
-video_status_text_size = 0.8
+video_status_text_size = 1
 video_status_text_thickness = 1
 
 # --- Servo definitions ---

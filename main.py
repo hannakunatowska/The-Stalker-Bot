@@ -135,8 +135,9 @@ def turn(direction, angle):
     if direction == "middle":
         unpress(turn_right_button_pin)
         unpress(turn_left_button_pin)
+        return
 
-    print_and_log(f"Turning {direction}! Servo angle: {angle:.1f} °")
+    print_and_log(f"Turning {direction}! Servo angle: {angle:.1f} degrees")
 
 def avoid_obstacle():
 
