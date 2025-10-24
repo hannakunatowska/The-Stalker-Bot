@@ -3,6 +3,7 @@
 # --- Imports ---
 
 import time
+import datetime # Imports the datetime module for working with dates and times
 import argparse # Imports the argparse module, which provides a way to parse command-line arguments
 import sys # Imports the sys module, which provides access to system-specific parameters and functions
 from functools import lru_cache # Imports the lru_cache decorator from the functools module, which is used to cache the results of function calls
@@ -32,6 +33,12 @@ camera_frame_area = camera_frame_width * camera_frame_height
 
 bounding_box_opacity = 0.7
 bounding_box_thickness = 2
+
+# --- Video recording definitions ---
+
+video_recording = True # Flag to enable or disable video recording
+video_recording_fps = 30 # Frames per second for video recording
+video_recording_size = (camera_frame_width, camera_frame_height) # Size of the video recording frame
 
 # --- Servo definitions ---
 
@@ -209,6 +216,10 @@ def draw_detections(request, stream = "main"):
             color = (255, 0, 0) # Set its color
             cv2.putText(mapped.array, "ROI", (box_x + 5, box_y + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1) # Label it
             cv2.rectangle(mapped.array, (box_x, box_y), (box_x + box_width, box_y + box_height), (255, 0, 0, 0)) # Draw it
+        
+        if video_recording: # If video recording is enabled:
+            frame_bgr = cv2.cvtColor(mapped.array, cv2.COLOR_RGB2BGR) # Convert the image from RGB to BGR format for OpenCV compatibility
+            video_writer.write(frame_bgr) # Write the frame to the video file if video recording is enabled
 
 def get_arguments():
 
@@ -392,6 +403,20 @@ picam2.start(config, show_preview = True) # Starts the video streaming in a live
 if intrinsics.preserve_aspect_ratio:
     imx500.set_auto_aspect_ratio()
 
+# --- Video recording setup ---
+
+if video_recording:
+
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S") # Gets the current timestamp for the video file name
+    video_recording_path = f"/home/garage/Documents/repositories/The-Stalker-Bot/videos/{timestamp}.avi"
+
+    video_writer = cv2.VideoWriter(
+    video_recording_path,
+    cv2.VideoWriter_fourcc(*"XVID"), # Video codec for AVI format
+    video_recording_fps,
+    video_recording_size
+)
+
 if __name__ == "__main__":
 
     print("Starting camera-servo tracking test...")
@@ -411,3 +436,5 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("Stopped by user.")
         picam2.stop()
+        video_writer.release()
+        cv2.destroyAllWindows()

@@ -9,8 +9,8 @@ from ultrasonic_sensor import get_distance
 # --- Definitions ---
 
 turn_time_per_degree = 0.9 / 90
-target_minimum_area = 0.5
-target_maximum_area = 0.7
+target_minimum_area = 0.35
+target_maximum_area = 0.5
 safe_distance_in_cm = 40
 max_angle_offset = 10
 follow_loop_update_time = 0.1
@@ -24,7 +24,7 @@ second_timer_off = True
 second_wait_time = 0.1
 log_file_path = "robot_log.txt"
 
-# Log initialization
+# --- Log initialization ---
 
 with open(log_file_path, "w") as f:
     f.write("Robot session started")
